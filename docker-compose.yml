@@ -1,0 +1,38 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=development
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=wishlist
+      - DB_HOST=db
+      - DB_PORT=5432
+    volumes:
+      - .:/usr/src/app
+    command: ["sh", "-c", "./wait-for-it.sh db:5432 -- npm run dev"]
+
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: wishlist
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:
