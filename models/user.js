@@ -1,5 +1,5 @@
 'use strict';
-const { Model } = require('sequelize');
+const { Model, DataTypes } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
   class User extends Model {
@@ -9,17 +9,75 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      // define association here
+      // Define associations here
     }
   }
+
   User.init({
-    name: DataTypes.STRING,
-    email: { type: DataTypes.STRING, unique: true },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false, // Ensures this field cannot be null
+    },
+    email: {
+      type: DataTypes.STRING,
+      unique: true,
+      allowNull: false,
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      // Exclude password from being returned by default
+      get() {
+        return undefined;
+      },
+    },
+    subuserModeOn: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false, // Default value
+    },
+    parentId: {
+      type: DataTypes.STRING,
+    },
+    notes: {
+      type: DataTypes.TEXT, // Supports multi-line strings
+    },
+    isUser: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true, // Default value
+    },
+    image: {
+      type: DataTypes.BLOB, // Stores binary data like images
+    },
+    isSuperAdmin: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    subusers: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      defaultValue: [],
+    },
+    groups: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      defaultValue: [],
+    },
+    notificationPreferences: {
+      type: DataTypes.STRING,
+    },
+    publicDescription: {
+      type: DataTypes.TEXT,
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN
+    },
+    isPublic: {
+      type: DataTypes.BOOLEAN
+    }
   }, {
     sequelize,
     modelName: 'User',
     tableName: 'users', // Explicitly specify the lowercase table name
     timestamps: true, // Ensures createdAt and updatedAt columns are automatically managed
   });
+
   return User;
 };
