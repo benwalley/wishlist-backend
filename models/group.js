@@ -23,6 +23,10 @@ module.exports = (sequelize) => {
             type: DataTypes.TEXT, // Multi-line string
             allowNull: true, // Optional
         },
+        members: {
+            type: DataTypes.ARRAY(DataTypes.STRING),
+            defaultValue: [],
+        },
         groupImage: {
             type: DataTypes.BLOB, // Image blob
             allowNull: true, // Optional
