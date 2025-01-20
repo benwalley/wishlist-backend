@@ -23,8 +23,13 @@ module.exports = (sequelize) => {
             type: DataTypes.STRING,
             allowNull: false, // Required field
         },
+        lists: {
+            type: DataTypes.ARRAY(DataTypes.STRING), // Array of item IDs
+            allowNull: true,
+            defaultValue: [], // Defaults to an empty array
+        },
         price: {
-            type: DataTypes.DECIMAL(10, 2),
+            type: DataTypes.STRING,
             allowNull: true, // Optional price field
         },
         minPrice: {
@@ -35,10 +40,9 @@ module.exports = (sequelize) => {
             type: DataTypes.DECIMAL(10, 2),
             allowNull: true, // Optional max price
         },
-        link: {
-            type: DataTypes.STRING,
+        links: {
+            type: DataTypes.ARRAY(DataTypes.STRING),
             allowNull: true, // Optional link
-            validate: { isUrl: true }, // Validate as a proper URL
         },
         note: {
             type: DataTypes.TEXT, // Multi-line string
@@ -57,6 +61,24 @@ module.exports = (sequelize) => {
             type: DataTypes.ARRAY(DataTypes.STRING),
             allowNull: true,
             defaultValue: [], // Defaults to empty array
+        },
+        amountWanted: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            defaultValue: '',
+        },
+        minAmountWanted: {
+            type: DataTypes.DECIMAL,
+            allowNull: true,
+        },
+        maxAmountWanted: {
+            type: DataTypes.DECIMAL,
+            allowNull: true,
+        },
+        priority: {
+            type: DataTypes.DECIMAL,
+            allowNull: true,
+            defaultValue: 0,
         },
         visibleToUsers: {
             type: DataTypes.ARRAY(DataTypes.STRING),

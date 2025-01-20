@@ -23,11 +23,6 @@ module.exports = (sequelize) => {
             type: DataTypes.STRING,
             allowNull: false, // Required field
         },
-        items: {
-            type: DataTypes.ARRAY(DataTypes.STRING), // Array of item IDs
-            allowNull: true,
-            defaultValue: [], // Defaults to an empty array
-        },
         visibleToGroups: {
             type: DataTypes.ARRAY(DataTypes.STRING), // Array of group IDs
             allowNull: true,

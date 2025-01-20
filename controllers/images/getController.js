@@ -12,8 +12,9 @@ exports.getImage = async (req, res) => {
             });
         }
 
-        res.setHeader('Content-Type', image.contentType); // Set the correct content type
-        res.send(image.imageData); // Send the raw image data
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        res.setHeader('Content-Type', image.contentType);
+        res.send(image.imageData);
     } catch (error) {
         res.status(500).json({
             success: false,
