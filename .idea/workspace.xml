@@ -6,10 +6,22 @@
   <component name="ChangeListManager">
     <list default="true" id="ac633e9b-c999-467f-b1d6-59c1a67c9c75" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0/storage_v2/_src_/database/wishlist.xbVDxg/schema/public.abK9xQ.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0/storage_v2/_src_/database/wishlist.xbVDxg/schema/public.abK9xQ.meta" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/images/getController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/images/getController.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/list.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/list.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/listItem.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/listItem.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/cors.js" beforeDir="false" afterPath="$PROJECT_DIR$/config/cors.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/users/currentUserController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/users/currentUserController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/users/updateUserController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/users/updateUserController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/gotten.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/contributor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/user.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/user.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/wantsToGoInOn.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/lists.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/lists.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/users/current.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/users/index.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/users/public.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/users/update.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/users/user.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/listService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listService.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -22,7 +34,6 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="PhpDebugGeneral" listening_started="true" />
   <component name="PhpWorkspaceProjectConfiguration" interpreter_name="/opt/homebrew/Cellar/php/8.3.6/bin/php" />
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 5
@@ -35,29 +46,30 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/benwalley/Documents/code/Wishlist V2/Wishlist Backend V2/controllers/lists",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
-    "ts.external.directory.path": "/Users/benwalley/Applications/PhpStorm.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/benwalley/Documents/code/Wishlist V2/Wishlist Backend V2&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/Users/benwalley/Applications/PhpStorm.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "DatabaseDriversLRU": [
-      "postgresql"
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;postgresql&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/controllers/lists" />
       <recent name="$PROJECT_DIR$/routes/images" />
       <recent name="$PROJECT_DIR$/routes/auth" />
@@ -71,8 +83,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-822845ee3bb5-JavaScript-PS-243.23654.115" />
-        <option value="bundled-php-predefined-a98d8de5180a-4c3855d0ab16-com.jetbrains.php.sharedIndexes-PS-243.23654.115" />
+        <option value="bundled-php-predefined-a98d8de5180a-4c3855d0ab16-com.jetbrains.php.sharedIndexes-PS-243.23654.168" />
       </set>
     </attachedChunks>
   </component>
@@ -95,7 +106,15 @@
       <workItem from="1736381873488" duration="1226000" />
       <workItem from="1736618634155" duration="6476000" />
       <workItem from="1736816382239" duration="2311000" />
-      <workItem from="1737212835120" duration="22493000" />
+      <workItem from="1737212835120" duration="22930000" />
+      <workItem from="1737424613674" duration="1067000" />
+      <workItem from="1738430093090" duration="8159000" />
+      <workItem from="1739165611118" duration="633000" />
+      <workItem from="1739231718133" duration="7538000" />
+      <workItem from="1739294505299" duration="18563000" />
+      <workItem from="1739488876143" duration="22693000" />
+      <workItem from="1739848857773" duration="1605000" />
+      <workItem from="1740012891910" duration="674000" />
     </task>
     <servers />
   </component>

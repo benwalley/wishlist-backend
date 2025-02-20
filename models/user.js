@@ -36,7 +36,7 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: false, // Default value
     },
     parentId: {
-      type: DataTypes.STRING,
+      type: DataTypes.INTEGER,
     },
     notes: {
       type: DataTypes.TEXT, // Supports multi-line strings
@@ -46,7 +46,7 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: true, // Default value
     },
     image: {
-      type: DataTypes.BLOB, // Stores binary data like images
+      type: DataTypes.INTEGER, // Stores binary data like images
     },
     isSuperAdmin: {
       type: DataTypes.BOOLEAN,

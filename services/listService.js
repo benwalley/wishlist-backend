@@ -141,6 +141,7 @@ class ListService {
     async deleteList(id) {
         try {
             const list = await List.findByPk(id);
+            console.log('got passedl list')
             if (!list) {
                 throw new Error('List not found');
             }
