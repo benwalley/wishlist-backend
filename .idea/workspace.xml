@@ -5,23 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ac633e9b-c999-467f-b1d6-59c1a67c9c75" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0/storage_v2/_src_/database/wishlist.xbVDxg/schema/public.abK9xQ.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0/storage_v2/_src_/database/wishlist.xbVDxg/schema/public.abK9xQ.meta" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/cors.js" beforeDir="false" afterPath="$PROJECT_DIR$/config/cors.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/users/currentUserController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/users/currentUserController.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/users/updateUserController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/users/updateUserController.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/gotten.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/contributor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/user.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/user.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/wantsToGoInOn.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/lists.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/lists.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/users/current.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/users/index.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/users/public.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/users/update.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/users/user.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/listService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/contributorController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/contributorController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/contributors.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/contributors.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -114,7 +100,8 @@
       <workItem from="1739294505299" duration="18563000" />
       <workItem from="1739488876143" duration="22693000" />
       <workItem from="1739848857773" duration="1605000" />
-      <workItem from="1740012891910" duration="674000" />
+      <workItem from="1740012891910" duration="1947000" />
+      <workItem from="1740184953853" duration="13394000" />
     </task>
     <servers />
   </component>

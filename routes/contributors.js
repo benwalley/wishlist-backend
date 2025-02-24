@@ -16,6 +16,8 @@ router.get('/:id',  passport.authenticate('jwt', { session: false }), contributo
 // Update a contributor by id
 router.put('/:id',  passport.authenticate('jwt', { session: false }), contributorController.update);
 
+router.put('/update/batch',  passport.authenticate('jwt', { session: false }), contributorController.updateBatch);
+
 // Delete a contributor by id
 router.delete('/:id',  passport.authenticate('jwt', { session: false }), contributorController.delete);
 
