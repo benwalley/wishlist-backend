@@ -19,14 +19,14 @@ module.exports = (sequelize) => {
 
     Answer.init({
         questionId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: false, // Required field
         },
         answererId: {
             type: DataTypes.STRING,
             allowNull: false, // Required field
         },
-        answer: {
+        answerText: {
             type: DataTypes.STRING,
             allowNull: false, // Required field
         },
