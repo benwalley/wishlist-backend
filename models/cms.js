@@ -8,15 +8,11 @@ module.exports = (sequelize) => {
          * This method is not a part of Sequelize lifecycle.
          * The `models/index` file will call this method automatically.
          */
-        static associate(models) {
-            // Define relationships here if needed
-            // Example: this.belongsTo(models.User, { foreignKey: 'createdById', as: 'creator' });
-        }
     }
 
     Cms.init({
         createdById: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: false, // Required field
         },
         location: {

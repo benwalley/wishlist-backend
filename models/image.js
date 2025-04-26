@@ -9,14 +9,15 @@ module.exports = (sequelize) => {
          * The `models/index` file will call this method automatically.
          */
         static associate(models) {
-            // Define associations here if needed
-            // Example: this.belongsTo(models.User, { foreignKey: 'uploadedById', as: 'uploader' });
+            // Define polymorphic associations
+            // Images can be associated with various models through recordId/recordType
+            // We don't define direct associations since this is a polymorphic relationship
         }
     }
 
     Image.init({
         recordId: {
-            type: DataTypes.STRING, // Foreign key to associate this image with another table
+            type: DataTypes.INTEGER, // Foreign key to associate this image with another table
             allowNull: true,
         },
         recordType: {

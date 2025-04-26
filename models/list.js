@@ -9,27 +9,34 @@ module.exports = (sequelize) => {
          * The `models/index` file will call this method automatically.
          */
         static associate(models) {
-            // Define relationships here if needed
-            // Example: this.belongsTo(models.User, { foreignKey: 'ownerId', as: 'owner' });
+            // Define relationships
+            this.belongsTo(models.User, { foreignKey: 'ownerId', as: 'owner' });
+            this.belongsTo(models.List, { foreignKey: 'parentId', as: 'parentList' });
+            this.hasMany(models.List, { foreignKey: 'parentId', as: 'childLists' });
+            this.belongsToMany(models.ListItem, { through: 'list_items_lists', foreignKey: 'listId', otherKey: 'itemId', as: 'items' });
         }
     }
 
     List.init({
         ownerId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: false, // Required field
         },
         listName: {
             type: DataTypes.STRING,
             allowNull: false, // Required field
         },
+        imageId: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+        },
         visibleToGroups: {
-            type: DataTypes.ARRAY(DataTypes.STRING), // Array of group IDs
+            type: DataTypes.ARRAY(DataTypes.INTEGER), // Array of group IDs
             allowNull: true,
             defaultValue: [], // Defaults to an empty array
         },
         visibleToUsers: {
-            type: DataTypes.ARRAY(DataTypes.STRING), // Array of user IDs
+            type: DataTypes.ARRAY(DataTypes.INTEGER), // Array of user IDs
             allowNull: true,
             defaultValue: [], // Defaults to an empty array
         },
@@ -43,11 +50,11 @@ module.exports = (sequelize) => {
             allowNull: true,
         },
         parentId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: true, // Optional, for hierarchical lists
         },
         sharedWith: {
-            type: DataTypes.ARRAY(DataTypes.STRING), // Array of user IDs
+            type: DataTypes.ARRAY(DataTypes.INTEGER), // Array of user IDs
             allowNull: true,
             defaultValue: [], // Defaults to an empty array
         },

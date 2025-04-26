@@ -3,7 +3,7 @@ const passport = require('./middleware/auth/config'); // Adjust the path as need
 const dotenv = require('dotenv');
 const cors = require('cors');
 const routes = require('./routes');
-const errorHandler = require('./middleware/errorHandler');
+const { errorHandler } = require('./middleware/errorHandler');
 const config = require('./config');
 dotenv.config();
 

@@ -23,3 +23,7 @@
 - Store environment variables in .env (never commit secrets)
 - Validate user input
 - Use middleware for authentication (authenticateRoute.js)
+
+## Responses
+ - When sending a response, always include a success property (true or false)
+ - if there is an error, always include a message property allong with the success: false..

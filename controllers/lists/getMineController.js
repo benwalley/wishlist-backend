@@ -13,10 +13,16 @@ class ListController {
                 return res.status(401).json({ error: 'Unauthorized: User ID not found' });
             }
 
-            const lists = await listService.getAllListsByOwnerId(userId);
-            return res.status(200).json(lists);
+            const lists = await listService.getAllListsWithOrphaned(userId);
+            return res.status(200).json({
+                success: true,
+                data: lists
+            });
         } catch (error) {
-            return res.status(500).json({ error: error.message });
+            return res.status(500).json({
+                success: false,
+                message: error.message
+            });
         }
     }
 }

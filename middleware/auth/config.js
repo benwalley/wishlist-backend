@@ -9,7 +9,8 @@ const opts = {
     secretOrKey
 };
 
-console.log(opts)
+// Only log that config is loaded, not the actual secrets
+console.log('JWT authentication configuration loaded')
 
 passport.use(
     new JwtStrategy(opts, async (jwt_payload, done) => {

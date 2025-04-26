@@ -9,13 +9,14 @@ module.exports = (sequelize) => {
          * The `models/index` file will call this method automatically.
          */
         static associate(models) {
-
+            // Define relationships
+            this.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
         }
     }
 
     Address.init({
         userId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: false, // Required field
         },
         address: {
@@ -23,11 +24,11 @@ module.exports = (sequelize) => {
             allowNull: false, // Required field
         },
         visibleToGroups: {
-            type: DataTypes.ARRAY(DataTypes.STRING),
+            type: DataTypes.ARRAY(DataTypes.INTEGER),
             defaultValue: [],
         },
         visibleToUsers: {
-            type: DataTypes.ARRAY(DataTypes.STRING),
+            type: DataTypes.ARRAY(DataTypes.INTEGER),
             defaultValue: [],
         },
     }, {

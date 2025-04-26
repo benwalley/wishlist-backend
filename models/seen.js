@@ -5,20 +5,20 @@ module.exports = (sequelize) => {
     class Seen extends Model {
         static associate(models) {
             // A Seen record belongs to a User
-            // this.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
-            //
-            // // A Seen record belongs to an Item
-            // this.belongsTo(models.ListItem, { foreignKey: 'itemId', as: 'item' });
+            this.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
+            
+            // A Seen record belongs to an Item
+            this.belongsTo(models.ListItem, { foreignKey: 'itemId', as: 'item' });
         }
     }
 
     Seen.init({
         userId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: false,
         },
         itemId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: false,
         },
         seenAt: {

@@ -9,11 +9,7 @@ module.exports = (sequelize) => {
          * The `models/index` file will call this method automatically.
          */
         static associate(models) {
-            // // An Answer belongs to a single Question
-            // this.belongsTo(models.Question, { foreignKey: 'questionId', as: 'question' });
-            //
-            // // An Answer is provided by a single User
-            // this.belongsTo(models.User, { foreignKey: 'answererId', as: 'answerer' });
+            this.belongsTo(models.Question, { foreignKey: 'questionId', as: 'question' });
         }
     }
 
@@ -23,7 +19,7 @@ module.exports = (sequelize) => {
             allowNull: false, // Required field
         },
         answererId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: false, // Required field
         },
         answerText: {
@@ -31,11 +27,11 @@ module.exports = (sequelize) => {
             allowNull: false, // Required field
         },
         visibleToGroups: {
-            type: DataTypes.ARRAY(DataTypes.STRING),
+            type: DataTypes.ARRAY(DataTypes.INTEGER),
             defaultValue: [],
         },
         visibleToUsers: {
-            type: DataTypes.ARRAY(DataTypes.STRING),
+            type: DataTypes.ARRAY(DataTypes.INTEGER),
             defaultValue: [],
         },
     }, {

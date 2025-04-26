@@ -8,19 +8,19 @@ module.exports = (sequelize) => {
          * This method is not a part of Sequelize lifecycle.
          */
         static associate(models) {
-            // Define relationships if needed
-            // Example: this.belongsTo(models.ListItem, { foreignKey: 'itemId', as: 'item' });
-            // Example: this.belongsTo(models.User, { foreignKey: 'purchaserId', as: 'purchaser' });
+            // Define relationships
+            this.belongsTo(models.ListItem, { foreignKey: 'itemId', as: 'item' });
+            this.belongsTo(models.User, { foreignKey: 'purchaserId', as: 'purchaser' });
         }
     }
 
     GiftStatus.init({
         itemId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: false, // Required field
         },
         purchaserId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: true, // Optional, in case no purchaser is assigned yet
         },
         isOrdered: {

@@ -5,12 +5,58 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ac633e9b-c999-467f-b1d6-59c1a67c9c75" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0/storage_v2/_src_/database/wishlist.xbVDxg/schema/public.abK9xQ.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0/storage_v2/_src_/database/wishlist.xbVDxg/schema/public.abK9xQ.meta" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CLAUDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/CLAUDE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/app.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/groups/addGroupController.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/groups/addUsersController.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/groups/currentGroupsController.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/groups/invitedGroupsController.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/listItems/createController.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/listItems/deleteController.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/listItems/getAllController.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/listItems/getByIdController.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/listItems/updateController.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/lists/getByIdController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/lists/getByIdController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/lists/getMineController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/lists/getMineController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/qaController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/qaController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/users/currentUserController.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/users/publicUsersController.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/users/updateUserController.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/users/userController.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/middleware/auth/config.js" beforeDir="false" afterPath="$PROJECT_DIR$/middleware/auth/config.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/middleware/errorHandler.js" beforeDir="false" afterPath="$PROJECT_DIR$/middleware/errorHandler.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/address.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/address.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/answer.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/answer.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/cms.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/cms.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/comment.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/comment.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/contributor.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/contributor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/giftStatus.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/giftStatus.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/group.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/group.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/image.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/image.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/list.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/list.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/listItem.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/listItem.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/money.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/money.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/question.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/question.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/seen.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/seen.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/user.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/user.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/groups/create.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/groups/current.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/groups/index.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/groups/invited.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/listItems.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/listItems.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/lists.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/lists.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/qa.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/qa.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/users.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/users.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/UserService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/UserService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/groupService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/groupService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/listItemService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listItemService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/listService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/qaService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/qaService.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -72,7 +118,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-php-predefined-a98d8de5180a-1ec7b7818973-com.jetbrains.php.sharedIndexes-PS-243.26053.13" />
+        <option value="bundled-php-predefined-a98d8de5180a-aaeaa8632555-com.jetbrains.php.sharedIndexes-PS-251.23774.466" />
       </set>
     </attachedChunks>
   </component>
@@ -107,7 +153,18 @@
       <workItem from="1740184953853" duration="15486000" />
       <workItem from="1742524151757" duration="693000" />
       <workItem from="1742873541874" duration="4102000" />
-      <workItem from="1743300356943" duration="17223000" />
+      <workItem from="1743300356943" duration="17836000" />
+      <workItem from="1743815094521" duration="9202000" />
+      <workItem from="1744077458698" duration="5012000" />
+      <workItem from="1744506458416" duration="14743000" />
+      <workItem from="1744774979793" duration="627000" />
+      <workItem from="1745026015118" duration="36492000" />
+      <workItem from="1745291719062" duration="1936000" />
+      <workItem from="1745371701114" duration="3743000" />
+      <workItem from="1745466344425" duration="1247000" />
+      <workItem from="1745502775814" duration="18000" />
+      <workItem from="1745540214703" duration="5091000" />
+      <workItem from="1745632230167" duration="8578000" />
     </task>
     <servers />
   </component>

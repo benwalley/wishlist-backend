@@ -9,8 +9,13 @@ module.exports = (sequelize) => {
          * The `models/index` file will call this method automatically.
          */
         static associate(models) {
-            // Define relationships here if needed
-            // Example: this.belongsTo(models.User, { foreignKey: 'createdById', as: 'creator' });
+            // Define relationships
+            this.belongsTo(models.User, { foreignKey: 'createdById', as: 'creator' });
+            this.belongsTo(models.Group, { foreignKey: 'groupId', as: 'group' });
+            this.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
+            this.belongsTo(models.ListItem, { foreignKey: 'itemId', as: 'item' });
+            this.belongsTo(models.Comment, { foreignKey: 'parentId', as: 'parent' });
+            this.hasMany(models.Comment, { foreignKey: 'parentId', as: 'replies' });
         }
     }
 
@@ -20,7 +25,7 @@ module.exports = (sequelize) => {
             allowNull: false, // Required field
         },
         createdById: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: false, // Required field
         },
         isAnonymous: {
@@ -29,29 +34,29 @@ module.exports = (sequelize) => {
             defaultValue: false, // Default to false
         },
         groupId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: true, // Optional, linked to a group
         },
         userId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: true, // Optional, linked to a user
         },
         itemId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: true, // Optional, linked to an item
         },
         visibleToGroups: {
-            type: DataTypes.ARRAY(DataTypes.STRING), // Array of group IDs
+            type: DataTypes.ARRAY(DataTypes.INTEGER), // Array of group IDs
             allowNull: true,
             defaultValue: [], // Default to an empty array
         },
         visibleToUsers: {
-            type: DataTypes.ARRAY(DataTypes.STRING), // Array of user IDs
+            type: DataTypes.ARRAY(DataTypes.INTEGER), // Array of user IDs
             allowNull: true,
             defaultValue: [], // Default to an empty array
         },
         parentId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: true, // Optional, for hierarchical comments
         },
         itemType: {

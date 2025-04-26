@@ -9,22 +9,34 @@ module.exports = (sequelize) => {
          * The `models/index` file will call this method automatically.
          */
         static associate(models) {
-            // Define associations here
-            Question.hasMany(models.Answer, {
+            // Define associations
+            this.hasMany(models.Answer, { foreignKey: 'questionId', as: 'answers' });
+            this.belongsTo(models.User, { foreignKey: 'askedById', as: 'askedBy' });
+            this.belongsTo(models.Group, { foreignKey: 'groupId', as: 'group' });
+
+            this.belongsToMany(models.Group, {
+                through: 'QuestionGroups',
                 foreignKey: 'questionId',
-                as: 'answers'
+                otherKey: 'groupId',
+                as: 'sharedWithGroups'
             });
-            // Example: this.belongsTo(models.User, { foreignKey: 'askedById' });
+
+            this.belongsToMany(models.User, {
+                through: 'QuestionUsers',
+                foreignKey: 'questionId',
+                otherKey: 'userId',
+                as: 'sharedWithUsers'
+            });
         }
     }
 
     Question.init({
         askedById: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: false, // Makes this field required
         },
         isAnonymous: { // Fixed spelling
-            type: DataTypes.STRING,
+            type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: 'false', // Default value
         },
@@ -32,16 +44,20 @@ module.exports = (sequelize) => {
             type: DataTypes.STRING,
             allowNull: false,
         },
-        groupId: {
-            type: DataTypes.STRING,
+        sharedWithGroupIds: {
+            type: DataTypes.ARRAY(DataTypes.INTEGER),
             allowNull: true, // Optional
         },
-        userId: {
-            type: DataTypes.STRING,
+        sharedWithUserIds: {
+            type: DataTypes.ARRAY(DataTypes.INTEGER),
             allowNull: true, // Optional
         },
         dueDate: {
             type: DataTypes.DATE, // Timestamp
+            allowNull: true, // Optional
+        },
+        deleted: {
+            type: DataTypes.BOOLEAN,
             allowNull: true, // Optional
         },
     }, {

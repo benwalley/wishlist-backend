@@ -9,18 +9,21 @@ module.exports = (sequelize) => {
          * The `models/index` file will call this method automatically.
          */
         static associate(models) {
-            // Define relationships here if needed
-            // Example: this.belongsTo(models.User, { foreignKey: 'ownerId', as: 'owner' });
+            // Define relationships
+            this.belongsTo(models.User, { foreignKey: 'ownerId', as: 'owner' });
+            this.belongsTo(models.User, { foreignKey: 'owedFromId', as: 'owedFrom' });
+            this.belongsTo(models.User, { foreignKey: 'owedToId', as: 'owedTo' });
+            this.belongsTo(models.ListItem, { foreignKey: 'itemId', as: 'item' });
         }
     }
 
     Money.init({
         ownerId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: false, // Required field
         },
         owedFromId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: true, // Optional, either this or owedFromName should be set
         },
         owedFromName: {
@@ -28,7 +31,7 @@ module.exports = (sequelize) => {
             allowNull: true, // Optional
         },
         owedToId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: true, // Optional, either this or owedToName should be set
         },
         owedToName: {
@@ -40,7 +43,7 @@ module.exports = (sequelize) => {
             allowNull: true, // Optional note about the transaction
         },
         itemId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: true, // Optional reference to an item
         },
         amount: {

@@ -9,8 +9,10 @@ module.exports = (sequelize) => {
          * The `models/index` file will call this method automatically.
          */
         static associate(models) {
-            // Define relationships here if needed
-            // Example: this.belongsTo(models.User, { foreignKey: 'ownerId', as: 'owner' });
+            // Define relationships
+            this.belongsTo(models.User, { foreignKey: 'ownerId', as: 'owner' });
+            this.hasMany(models.Question, { foreignKey: 'groupId', as: 'questions' });
+            this.hasMany(models.Comment, { foreignKey: 'groupId', as: 'comments' });
         }
     }
 
@@ -24,24 +26,29 @@ module.exports = (sequelize) => {
             allowNull: true, // Optional
         },
         members: {
-            type: DataTypes.ARRAY(DataTypes.STRING),
+            type: DataTypes.ARRAY(DataTypes.INTEGER),
             defaultValue: [],
         },
         groupImage: {
-            type: DataTypes.BLOB, // Image blob
+            type: DataTypes.INTEGER, // Image id
             allowNull: true, // Optional
         },
         invitedIds: {
-            type: DataTypes.ARRAY(DataTypes.STRING),
+            type: DataTypes.ARRAY(DataTypes.INTEGER),
             defaultValue: [],
         },
         adminIds: {
-            type: DataTypes.ARRAY(DataTypes.STRING),
+            type: DataTypes.ARRAY(DataTypes.INTEGER),
             defaultValue: [],
         },
         ownerId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             allowNull: false, // Required field
+        },
+        deleted: {
+            type: DataTypes.BOOLEAN,
+            allowNull: true,
+            defaultValue: false,
         },
     }, {
         sequelize,

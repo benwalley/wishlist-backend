@@ -80,41 +80,73 @@ module.exports = {
         }
     },
 
+    getByAskerId: async (req, res) => {
+        try {
+            const { userId } = req.params;
+            if (!userId) {
+                return res.status(400).json({ error: 'userId is required.' });
+            }
+
+            const qas = await QAService.getQAsByAskerId(userId);
+            return res.status(200).json(qas);
+        } catch (error) {
+            console.error('Error fetching QAs by userId:', error);
+            return res.status(400).json({ error: error.message });
+        }
+    },
+
     // Update a QA
     updateQuestion: async (req, res) => {
         try {
+            const { questionId } = req.params;
             const data = req.body;
-            const id = data.id;
-            // Check if the user owns this Question
-            if (!req.user) return;
 
-            const question = await Question.findByPk(id);
-            if (question && question.askedById === req.user.id) {
-                return res.status(403).json({ error: 'Not authorized to update this question.' });
-
+            // Check if the user is authenticated
+            if (!req.user) {
+                return res.status(401).json({ error: 'User not authenticated.' });
             }
-            const updatedQuestion = await QAService.updateQuestion(id, data);
+
+            const question = await Question.findByPk(questionId);
+            if (!question) {
+                return res.status(404).json({ error: 'Question not found.' });
+            }
+
+            // Check if the user owns this Question (authorization)
+            if (question.askedById !== req.user.id) {
+                return res.status(403).json({ error: 'Not authorized to update this question.' });
+            }
+
+            const updatedQuestion = await QAService.updateQuestion(questionId, data);
             return res.status(200).json(updatedQuestion);
         } catch (error) {
-            console.error('Error updating QA:', error);
+            console.error('Error updating question:', error);
             return res.status(400).json({ error: error.message });
         }
     },
 
     updateAnswer: async (req, res) => {
         try {
-            const data = req.body;
-            const id = data.id;
-            if (!req.user) return;
+            const {questionId, answerText} = req.body;
 
-            const answer = await Answer.findByPk(id);
-            if (answer && answer.answererId != req.user.id) {
-                return res.status(403).json({ error: 'Not authorized to update this answer.' });
+            if (!req.user) {
+                return res.status(401).json({ error: 'User not authenticated.' });
             }
-            const updatedAnswer = await QAService.updateAnswer(id, data);
-            return res.status(200).json(updatedAnswer);
+
+            // Check if question ID is provided
+            if (!questionId) {
+                return res.status(400).json({ error: 'Question ID is required.' });
+            }
+
+            // Check if answer text is provided
+            if (!answerText) {
+                return res.status(400).json({ error: 'Answer text is required.' });
+            }
+
+
+            const result = await QAService.createOrUpdateAnswer(answerText, req.user.id, questionId);
+            return res.status(200).json(result);
         } catch (error) {
-            console.error('Error updating QA:', error);
+            console.error('Error updating answer:', error);
             return res.status(400).json({ error: error.message });
         }
     },
@@ -127,15 +159,34 @@ module.exports = {
             if (req.user) {
                 const qa = await Question.findByPk(id);
                 if (qa && (parseInt(qa.askedById) !== parseInt(req.user.id))) {
-                    return res.status(403).json({ error: 'Not authorized to delete this QA.' });
+                    return res.status(403).json({success: false, error: 'Not authorized to delete this Question.' });
                 }
             }
 
             const deletedQA = await QAService.deleteQuestion(id);
-            return res.status(200).json(deletedQA);
+            return res.status(200).json({success: true, deletedQA});
         } catch (error) {
-            console.error('Error deleting QA:', error);
-            return res.status(400).json({ error: error.message });
+            console.error('Error deleting Question:', error);
+            return res.status(400).json({success: false, error: error.message });
+        }
+    },
+
+    forceDeleteQuestion: async (req, res) => {
+        try {
+            const { id } = req.params;
+            // Check if the user owns this QA
+            if (req.user) {
+                const qa = await Question.findByPk(id);
+                if (qa && (parseInt(qa.askedById) !== parseInt(req.user.id))) {
+                    return res.status(403).json({success: false, error: 'Not authorized to delete this Question.' });
+                }
+            }
+
+            const deletedQA = await QAService.forceDeleteQA(id);
+            return res.status(200).json({success: true, deletedQA});
+        } catch (error) {
+            console.error('Error deleting Question:', error);
+            return res.status(400).json({success: false, error: error.message });
         }
     },
 
@@ -145,15 +196,15 @@ module.exports = {
             // Check if the user owns this QA
             if (req.user) {
                 const qa = await Answer.findByPk(id);
-                if (qa && qa.askedById !== req.user.id) {
-                    return res.status(403).json({ error: 'Not authorized to delete this QA.' });
+                if (qa && qa.answererId !== req.user.id) {
+                    return res.status(403).json({ error: 'Not authorized to delete this Answer.' });
                 }
             }
 
             const deletedQA = await QAService.deleteAnswer(id);
             return res.status(200).json(deletedQA);
         } catch (error) {
-            console.error('Error deleting QA:', error);
+            console.error('Error deleting Answer:', error);
             return res.status(400).json({ error: error.message });
         }
     },
