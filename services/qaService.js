@@ -2,6 +2,100 @@ const { Question, Answer, User, Group } = require('../models');
 const { Op, Sequelize } = require('sequelize');
 
 class QAService {
+    /**
+     * Share multiple questions with a group
+     * @param {Array<number>} questionIds - Array of question IDs to share
+     * @param {number} groupId - Group ID to share with
+     * @param {number} userId - ID of user performing the share operation
+     * @returns {Promise<Object>}
+     */
+    static async bulkShareQuestionsWithGroup(questionIds, groupId, userId) {
+        try {
+            // Verify group exists and user has access to it
+            const group = await Group.findByPk(groupId);
+            if (!group) {
+                return {
+                    success: false,
+                    message: 'Group not found'
+                };
+            }
+
+            // Check if user is a member, admin, or owner of the group
+            const isMember = group.members && group.members.includes(userId);
+            const isAdmin = group.adminIds && group.adminIds.includes(userId);
+            const isOwner = group.ownerId === userId;
+            if (!isMember && !isAdmin && !isOwner) {
+                return {
+                    success: false,
+                    message: 'You do not have access to this group'
+                };
+            }
+
+            if (!Array.isArray(questionIds) || questionIds.length === 0) {
+                return {
+                    success: false,
+                    message: 'No questions provided for sharing'
+                };
+            }
+
+            // Get all questions and check user ownership
+            const questions = await Question.findAll({
+                where: {
+                    id: {
+                        [Op.in]: questionIds
+                    }
+                }
+            });
+
+            if (questions.length === 0) {
+                return {
+                    success: false,
+                    message: 'No valid questions found'
+                };
+            }
+
+            // Track results
+            const results = {
+                success: true,
+                sharedQuestions: [],
+                failedQuestions: []
+            };
+
+            // Update each question
+            for (const question of questions) {
+                // Only allow sharing if user is the asker
+                if (String(question.askedById) !== String(userId)) {
+                    results.failedQuestions.push({
+                        id: question.id,
+                        reason: 'You can only share questions you asked'
+                    });
+                    continue;
+                }
+
+                // Add group to sharedWithGroupIds if not already there
+                const sharedWithGroupIds = Array.isArray(question.sharedWithGroupIds) ? [...question.sharedWithGroupIds] : [];
+                
+                if (!sharedWithGroupIds.includes(groupId)) {
+                    sharedWithGroupIds.push(groupId);
+                    await question.update({ sharedWithGroupIds });
+                    results.sharedQuestions.push(question.id);
+                } else {
+                    // Already shared with this group
+                    results.sharedQuestions.push(question.id);
+                }
+            }
+
+            return results;
+        } catch (error) {
+            console.error('Error in bulkShareQuestionsWithGroup:', error);
+            return {
+                success: false,
+                message: 'An error occurred while sharing questions with the group',
+                error: error.message
+            };
+        }
+    }
+    
     // Create a new QA entry
     static async createQA(data) {
         try {

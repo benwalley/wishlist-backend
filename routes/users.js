@@ -9,6 +9,7 @@ router.get('/yours', passport.authenticate('jwt', { session: false }), usersCont
 router.get('/accessible', passport.authenticate('jwt', { session: false }), usersController.getAccessibleUsers);
 router.get('/public', usersController.getPublicUsers);
 router.put('/', passport.authenticate('jwt', { session: false }), usersController.updateUser);
+router.get('/:id', passport.authenticate('jwt', { session: false }), usersController.getUserById);
 router.get('/', usersController.getUserData);
 
 module.exports = router;

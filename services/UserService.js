@@ -1,9 +1,10 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const models = require('../models');
-const { User, RefreshToken, Group } = models;
+const { User, RefreshToken, Group, List } = models;
 const { Op } = require('sequelize');
 const { ApiError } = require('../middleware/errorHandler');
+const listService = require('./listService');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET;
@@ -43,6 +44,16 @@ class UserService {
                 password: hashedPassword,
             });
 
+            // Create a default list for the user
+            await listService.createList({
+                ownerId: newUser.id,
+                listName: username,
+                visibleToGroups: [],
+                visibleToUsers: [],
+                public: false,
+                description: "Default wishlist",
+            });
+
             // Generate tokens
             const tokens = await UserService.generateTokens(newUser.id, newUser.email);
 
@@ -80,6 +91,16 @@ class UserService {
             name: userName,
             email,
             isActive: false // Mark as inactive until they register properly
+        });
+
+        // Create a default list for the placeholder user
+        await listService.createList({
+            ownerId: user.id,
+            listName: userName,
+            visibleToGroups: [],
+            visibleToUsers: [],
+            public: false,
+            description: "Default wishlist",
         });
 
         return user;
@@ -361,6 +382,89 @@ class UserService {
         });
 
         return accessibleUsers;
+    }
+    
+    /**
+     * Check if a user has access to view another user
+     * @param {number} currentUserId - ID of the requesting user
+     * @param {number} targetUserId - ID of the user to access
+     * @returns {Promise<boolean>} - Whether the current user has access
+     */
+    static async hasAccessToUser(currentUserId, targetUserId) {
+        try {
+            // Case 1: Users are the same
+            if (currentUserId === targetUserId) {
+                return true;
+            }
+            
+            // Case 2: Target user is public
+            const targetUser = await User.findByPk(targetUserId);
+            if (!targetUser) {
+                return false;
+            }
+            
+            if (targetUser.isPublic) {
+                return true;
+            }
+            
+            // Case 3: Current user is parent of target user
+            if (targetUser.parentId === currentUserId) {
+                return true;
+            }
+            
+            // Case 4: Current user and target user are in the same group
+            const userGroups = await this.getUserGroups(currentUserId);
+            const groupMemberIds = this.getGroupMemberIds(userGroups);
+            
+            if (groupMemberIds.has(targetUserId)) {
+                return true;
+            }
+            
+            return false;
+        } catch (error) {
+            console.error('Error checking user access:', error);
+            return false;
+        }
+    }
+    
+    /**
+     * Get a user by ID if the current user has access
+     * @param {number} currentUserId - ID of the requesting user
+     * @param {number} targetUserId - ID of the user to fetch
+     * @returns {Promise<Object>} - User data if accessible
+     */
+    static async getUserByIdWithAccess(currentUserId, targetUserId) {
+        if (!targetUserId) {
+            throw new ApiError('Target user ID is required', {
+                status: 400,
+                errorType: 'VALIDATION_ERROR',
+                publicMessage: 'User ID is required'
+            });
+        }
+        
+        const hasAccess = await this.hasAccessToUser(currentUserId, targetUserId);
+        
+        if (!hasAccess) {
+            throw new ApiError('Access denied', {
+                status: 403,
+                errorType: 'ACCESS_DENIED',
+                publicMessage: 'You do not have permission to view this user'
+            });
+        }
+        
+        const user = await User.findByPk(targetUserId, {
+            attributes: { exclude: ['password'] }
+        });
+        
+        if (!user) {
+            throw new ApiError('User not found', {
+                status: 404,
+                errorType: 'NOT_FOUND',
+                publicMessage: 'User not found'
+            });
+        }
+        
+        return user;
     }
 }
 

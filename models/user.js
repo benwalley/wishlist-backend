@@ -63,6 +63,10 @@ module.exports = (sequelize, DataTypes) => {
     },
     isPublic: {
       type: DataTypes.BOOLEAN
+    },
+    accountConfig: {
+      type: DataTypes.JSONB,
+      allowNull: true
     }
   }, {
     sequelize,

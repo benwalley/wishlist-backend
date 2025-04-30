@@ -6,16 +6,25 @@ module.exports = {
     create: async (req, res) => {
         try {
             if (!req.user) {
-                return res.status(401).json({ error: 'User not authenticated.' });
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'User not authenticated.' 
+                });
             }
             const askedById = req.user.id;
             const data = { ...req.body, askedById };
 
             const newQA = await QAService.createQA(data);
-            return res.status(201).json(newQA);
+            return res.status(201).json({
+                success: true,
+                data: newQA
+            });
         } catch (error) {
             console.error('Error creating QA:', error);
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({ 
+                success: false, 
+                message: error.message 
+            });
         }
     },
 
@@ -24,10 +33,16 @@ module.exports = {
         try {
             const filter = req.query; // Use query params for filtering
             const qas = await QAService.getAllQAs(filter);
-            return res.status(200).json(qas);
+            return res.status(200).json({
+                success: true,
+                data: qas
+            });
         } catch (error) {
             console.error('Error fetching QAs:', error);
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({ 
+                success: false, 
+                message: error.message 
+            });
         }
     },
 
@@ -36,13 +51,22 @@ module.exports = {
         try {
             const { questionId } = req.params;
             if (!questionId) {
-                return res.status(400).json({ error: 'questionId is required.' });
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'questionId is required.' 
+                });
             }
             const qas = await QAService.getQAsByQuestionId(questionId);
-            return res.status(200).json(qas);
+            return res.status(200).json({
+                success: true,
+                data: qas
+            });
         } catch (error) {
             console.error('Error fetching QAs by questionId:', error);
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({ 
+                success: false, 
+                message: error.message 
+            });
         }
     },
 
@@ -52,12 +76,21 @@ module.exports = {
             const { id } = req.params;
             const qa = await QAService.getQAById(id);
             if (!qa) {
-                return res.status(404).json({ error: 'QA not found.' });
+                return res.status(404).json({ 
+                    success: false, 
+                    message: 'QA not found.' 
+                });
             }
-            return res.status(200).json(qa);
+            return res.status(200).json({
+                success: true,
+                data: qa
+            });
         } catch (error) {
             console.error('Error fetching QA by ID:', error);
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({ 
+                success: false, 
+                message: error.message 
+            });
         }
     },
 
@@ -65,7 +98,10 @@ module.exports = {
         try {
             const { userId } = req.params;
             if (!userId) {
-                return res.status(400).json({ error: 'userId is required.' });
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'userId is required.' 
+                });
             }
 
             // Get user's groups from request if available
@@ -73,10 +109,16 @@ module.exports = {
             const userGroups = req.user && req.user.groups ? req.user.groups : [];
 
             const qas = await QAService.getQAsByUserId(userId, userGroups);
-            return res.status(200).json(qas);
+            return res.status(200).json({
+                success: true,
+                data: qas
+            });
         } catch (error) {
             console.error('Error fetching QAs by userId:', error);
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({ 
+                success: false, 
+                message: error.message 
+            });
         }
     },
 
@@ -84,14 +126,23 @@ module.exports = {
         try {
             const { userId } = req.params;
             if (!userId) {
-                return res.status(400).json({ error: 'userId is required.' });
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'userId is required.' 
+                });
             }
 
             const qas = await QAService.getQAsByAskerId(userId);
-            return res.status(200).json(qas);
+            return res.status(200).json({
+                success: true,
+                data: qas
+            });
         } catch (error) {
             console.error('Error fetching QAs by userId:', error);
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({ 
+                success: false, 
+                message: error.message 
+            });
         }
     },
 
@@ -103,24 +154,39 @@ module.exports = {
 
             // Check if the user is authenticated
             if (!req.user) {
-                return res.status(401).json({ error: 'User not authenticated.' });
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'User not authenticated.' 
+                });
             }
 
             const question = await Question.findByPk(questionId);
             if (!question) {
-                return res.status(404).json({ error: 'Question not found.' });
+                return res.status(404).json({ 
+                    success: false, 
+                    message: 'Question not found.' 
+                });
             }
 
             // Check if the user owns this Question (authorization)
             if (question.askedById !== req.user.id) {
-                return res.status(403).json({ error: 'Not authorized to update this question.' });
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'Not authorized to update this question.' 
+                });
             }
 
             const updatedQuestion = await QAService.updateQuestion(questionId, data);
-            return res.status(200).json(updatedQuestion);
+            return res.status(200).json({
+                success: true,
+                data: updatedQuestion
+            });
         } catch (error) {
             console.error('Error updating question:', error);
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({ 
+                success: false, 
+                message: error.message 
+            });
         }
     },
 
@@ -129,25 +195,40 @@ module.exports = {
             const {questionId, answerText} = req.body;
 
             if (!req.user) {
-                return res.status(401).json({ error: 'User not authenticated.' });
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'User not authenticated.' 
+                });
             }
 
             // Check if question ID is provided
             if (!questionId) {
-                return res.status(400).json({ error: 'Question ID is required.' });
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Question ID is required.' 
+                });
             }
 
             // Check if answer text is provided
             if (!answerText) {
-                return res.status(400).json({ error: 'Answer text is required.' });
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Answer text is required.' 
+                });
             }
 
 
             const result = await QAService.createOrUpdateAnswer(answerText, req.user.id, questionId);
-            return res.status(200).json(result);
+            return res.status(200).json({
+                success: true,
+                data: result
+            });
         } catch (error) {
             console.error('Error updating answer:', error);
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({ 
+                success: false, 
+                message: error.message 
+            });
         }
     },
 
@@ -159,15 +240,24 @@ module.exports = {
             if (req.user) {
                 const qa = await Question.findByPk(id);
                 if (qa && (parseInt(qa.askedById) !== parseInt(req.user.id))) {
-                    return res.status(403).json({success: false, error: 'Not authorized to delete this Question.' });
+                    return res.status(403).json({
+                        success: false, 
+                        message: 'Not authorized to delete this Question.' 
+                    });
                 }
             }
 
             const deletedQA = await QAService.deleteQuestion(id);
-            return res.status(200).json({success: true, deletedQA});
+            return res.status(200).json({
+                success: true, 
+                data: deletedQA
+            });
         } catch (error) {
             console.error('Error deleting Question:', error);
-            return res.status(400).json({success: false, error: error.message });
+            return res.status(400).json({
+                success: false, 
+                message: error.message 
+            });
         }
     },
 
@@ -178,15 +268,24 @@ module.exports = {
             if (req.user) {
                 const qa = await Question.findByPk(id);
                 if (qa && (parseInt(qa.askedById) !== parseInt(req.user.id))) {
-                    return res.status(403).json({success: false, error: 'Not authorized to delete this Question.' });
+                    return res.status(403).json({
+                        success: false, 
+                        message: 'Not authorized to delete this Question.' 
+                    });
                 }
             }
 
             const deletedQA = await QAService.forceDeleteQA(id);
-            return res.status(200).json({success: true, deletedQA});
+            return res.status(200).json({
+                success: true, 
+                data: deletedQA
+            });
         } catch (error) {
             console.error('Error deleting Question:', error);
-            return res.status(400).json({success: false, error: error.message });
+            return res.status(400).json({
+                success: false, 
+                message: error.message 
+            });
         }
     },
 
@@ -197,15 +296,24 @@ module.exports = {
             if (req.user) {
                 const qa = await Answer.findByPk(id);
                 if (qa && qa.answererId !== req.user.id) {
-                    return res.status(403).json({ error: 'Not authorized to delete this Answer.' });
+                    return res.status(403).json({ 
+                        success: false, 
+                        message: 'Not authorized to delete this Answer.' 
+                    });
                 }
             }
 
             const deletedQA = await QAService.deleteAnswer(id);
-            return res.status(200).json(deletedQA);
+            return res.status(200).json({
+                success: true,
+                data: deletedQA
+            });
         } catch (error) {
             console.error('Error deleting Answer:', error);
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({ 
+                success: false, 
+                message: error.message 
+            });
         }
     },
 };

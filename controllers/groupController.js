@@ -1,6 +1,8 @@
 const { User } = require('../models');
 const GroupService = require('../services/groupService');
 const UserService = require('../services/UserService');
+const ListService = require('../services/listService');
+const QAService = require('../services/qaService');
 const { Op } = require('sequelize');
 
 /**
@@ -506,5 +508,74 @@ exports.declineInvitation = async (req, res) => {
         }
 
         res.status(500).json({ success: false, error: 'Failed to decline group invitation' });
+    }
+};
+
+/**
+ * Bulk share lists and questions with a group
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>}
+ */
+exports.bulkShareWithGroup = async (req, res) => {
+    try {
+        // Check if user is authenticated
+        if (!req.user) {
+            return res.status(401).json({ 
+                success: false,
+                message: 'User not authenticated.' 
+            });
+        }
+
+        const { groupId } = req.params;
+        const { listIds, questionIds } = req.body;
+        const userId = req.user.id;
+
+        // Array to collect results
+        const results = {
+            success: true,
+            lists: null,
+            questions: null
+        };
+
+        // Process lists if provided
+        if (Array.isArray(listIds) && listIds.length > 0) {
+            const listResults = await ListService.bulkShareListsWithGroup(listIds, groupId, userId);
+            results.lists = listResults;
+            
+            // If lists sharing failed, mark overall operation as failed
+            if (!listResults.success) {
+                results.success = false;
+            }
+        }
+
+        // Process questions if provided
+        if (Array.isArray(questionIds) && questionIds.length > 0) {
+            const questionResults = await QAService.bulkShareQuestionsWithGroup(questionIds, groupId, userId);
+            results.questions = questionResults;
+            
+            // If questions sharing failed, mark overall operation as failed
+            if (!questionResults.success) {
+                results.success = false;
+            }
+        }
+
+        // If neither lists nor questions were provided
+        if (!Array.isArray(listIds) && !Array.isArray(questionIds)) {
+            return res.status(400).json({
+                success: false,
+                message: 'No lists or questions provided for sharing'
+            });
+        }
+
+        // Return appropriate status based on success
+        return res.status(results.success ? 200 : 400).json(results);
+    } catch (error) {
+        console.error('Error in bulkShareWithGroup:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred while processing bulk share request',
+            error: error.message
+        });
     }
 };

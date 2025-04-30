@@ -148,6 +148,38 @@ exports.updateUser = async (req, res, next) => {
 };
 
 /**
+ * Get a specific user by ID
+ * Checks access permissions based on:
+ * 1. If the user is requesting their own profile
+ * 2. If the target user is public
+ * 3. If the current user is the parent of the target user
+ * 4. If both users are in the same group
+ */
+exports.getUserById = async (req, res, next) => {
+    try {
+        const currentUserId = req.user.id;
+        const targetUserId = parseInt(req.params.id);
+
+        if (isNaN(targetUserId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid user ID format'
+            });
+        }
+
+        const user = await UserService.getUserByIdWithAccess(currentUserId, targetUserId);
+
+        return res.status(200).json({
+            success: true,
+            data: user
+        });
+    } catch (error) {
+        console.error('Error fetching user by ID:', error);
+        next(error);
+    }
+};
+
+/**
  * Alias for getPublicUsers - used for the root /users endpoint
  */
 exports.getUserData = exports.getPublicUsers;

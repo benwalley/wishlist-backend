@@ -46,4 +46,7 @@ router.post('/:groupId/invite', passport.authenticate('jwt', { session: false })
 // Add users to group route
 router.post('/users', passport.authenticate('jwt', { session: false }), groupController.addUsers);
 
+// Bulk share lists and questions with a group
+router.post('/:groupId/bulk-share', passport.authenticate('jwt', { session: false }), groupController.bulkShareWithGroup);
+
 module.exports = router;
