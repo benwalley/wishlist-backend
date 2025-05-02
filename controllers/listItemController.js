@@ -157,3 +157,63 @@ exports.getNotInList = async (req, res, next) => {
         next(error);
     }
 };
+
+/**
+ * Bulk add items to a list
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.bulkAddToList = async (req, res, next) => {
+    try {
+        // Validate input
+        const { listId, itemIds } = req.body;
+        
+        if (!listId) {
+            return res.status(400).json({
+                success: false,
+                message: 'List ID is required'
+            });
+        }
+        
+        if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'A non-empty array of item IDs is required'
+            });
+        }
+        
+        const userId = req.user.id;
+        
+        const result = await ListItemService.bulkAddItemsToList(listId, itemIds, userId);
+        
+        res.status(200).json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        // Let the error middleware handle it
+        next(error);
+    }
+};
+
+/**
+ * Get all non-deleted list items for the authenticated user
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.getMyItems = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const items = await ListItemService.getUserItems(userId);
+        
+        res.status(200).json({
+            success: true,
+            data: items
+        });
+    } catch (error) {
+        // Let the error middleware handle it
+        next(error);
+    }
+};

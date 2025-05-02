@@ -5,19 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ac633e9b-c999-467f-b1d6-59c1a67c9c75" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/controllers/lists/getAccessibleController.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/controllers/lists/getByGroupController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/groupController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/groupController.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/qaController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/qaController.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/usersController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/usersController.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/user.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/user.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/groups.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/groups.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/lists.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/lists.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/users.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/users.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/UserService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/UserService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/listItemController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/listItemController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/listItems.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/listItems.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/listItemService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listItemService.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/services/listService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/qaService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/qaService.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -129,7 +122,9 @@
       <workItem from="1745798128643" duration="4512000" />
       <workItem from="1745878928494" duration="2154000" />
       <workItem from="1745946176499" duration="49000" />
-      <workItem from="1745984054827" duration="1839000" />
+      <workItem from="1745984054827" duration="3526000" />
+      <workItem from="1746071760225" duration="2784000" />
+      <workItem from="1746142956342" duration="5897000" />
     </task>
     <servers />
   </component>

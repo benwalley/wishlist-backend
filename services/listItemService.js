@@ -53,6 +53,27 @@ class ListItemService {
             });
         }
     }
+    
+    // Get all non-deleted list items created by a specific user
+    static async getUserItems(userId) {
+        try {
+            const items = await ListItem.findAll({
+                where: {
+                    createdById: userId,
+                    deleted: false
+                },
+                order: [['createdAt', 'DESC']] // Most recent first
+            });
+            return items;
+        } catch (error) {
+            console.error('Error fetching user ListItems:', error);
+            throw new ApiError('Failed to fetch user list items', {
+                status: 500,
+                errorType: 'DATABASE_ERROR',
+                publicMessage: 'Unable to retrieve your list items. Please try again.'
+            });
+        }
+    }
 
     // Get a single list item by ID
     static async getItemById(id) {
@@ -192,6 +213,92 @@ class ListItemService {
                 status: 500,
                 errorType: 'DATABASE_ERROR',
                 publicMessage: 'Unable to retrieve items not in any list. Please try again.'
+            });
+        }
+    }
+
+    // Bulk add items to a list
+    static async bulkAddItemsToList(listId, itemIds, userId) {
+        const transaction = await sequelize.transaction();
+        try {
+            // Verify the list exists and user has permission to modify it
+            const list = await List.findByPk(listId, { transaction });
+            if (!list) {
+                throw new ApiError('List not found', {
+                    status: 404,
+                    errorType: 'NOT_FOUND',
+                    publicMessage: 'The specified list could not be found'
+                });
+            }
+            
+            // Check if user is owner of the list
+            if (String(list.ownerId) !== String(userId)) {
+                throw new ApiError('Unauthorized', {
+                    status: 403,
+                    errorType: 'UNAUTHORIZED',
+                    publicMessage: 'You do not have permission to add items to this list'
+                });
+            }
+            
+            // Get all items that exist and weren't deleted
+            const items = await ListItem.findAll({
+                where: {
+                    id: {
+                        [Op.in]: itemIds
+                    },
+                    deleted: false
+                },
+                transaction
+            });
+            
+            if (items.length === 0) {
+                throw new ApiError('No valid items found', {
+                    status: 400,
+                    errorType: 'BAD_REQUEST',
+                    publicMessage: 'No valid items were found to add to the list'
+                });
+            }
+            
+            // Track which items were successfully added
+            const results = {
+                success: true,
+                addedItems: [],
+                failedItems: []
+            };
+            
+            // Add each item to the list
+            for (const item of items) {
+                try {
+                    // Check if item is already in the list
+                    await list.addItem(item, { transaction });
+                    
+                    // Update the item's lists array if it doesn't already include this list
+                    if (!item.lists || !item.lists.includes(list.id)) {
+                        const updatedLists = item.lists ? [...item.lists, list.id] : [list.id];
+                        await item.update({ lists: updatedLists }, { transaction });
+                    }
+                    
+                    results.addedItems.push(item.id);
+                } catch (error) {
+                    console.error(`Error adding item ${item.id} to list:`, error);
+                    results.failedItems.push({
+                        id: item.id,
+                        reason: 'Database error while adding item to list'
+                    });
+                }
+            }
+            
+            await transaction.commit();
+            return results;
+        } catch (error) {
+            await transaction.rollback();
+            console.error('Error in bulkAddItemsToList:', error);
+            if (error instanceof ApiError) throw error;
+
+            throw new ApiError('Failed to add items to list', {
+                status: 500,
+                errorType: 'DATABASE_ERROR',
+                publicMessage: 'Unable to add items to the list. Please try again.'
             });
         }
     }

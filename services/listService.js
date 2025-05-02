@@ -238,24 +238,57 @@ class ListService {
      */
     async getOrphanedItemsList(userId) {
         try {
-            // First get all item IDs that are in any list using the junction table
-            const itemsInLists = await sequelize.query(`
-                SELECT DISTINCT "itemId" 
-                FROM "list_items_lists"
-            `, { type: sequelize.QueryTypes.SELECT });
-
-            const itemIdsInLists = itemsInLists.map(item => item.itemId);
-
-            // Now find items created by the user that are not in any list
-            const orphanedItems = await ListItem.findAll({
+            // 1. Get all existing lists (to check against later)
+            const existingLists = await List.findAll({
+                attributes: ['id'],
+                raw: true
+            });
+            const existingListIds = existingLists.map(list => list.id);
+            
+            // 2. Get all non-deleted items created by the user
+            const userItems = await ListItem.findAll({
                 where: {
                     createdById: userId,
-                    deleted: false,
-                    // Only include items that don't exist in the list_items_lists table
-                    id: {
-                        [Op.notIn]: itemIdsInLists.length > 0 ? itemIdsInLists : [0] // Use [0] if empty to avoid SQL error
+                    deleted: false
+                },
+                raw: true
+            });
+            
+            if (userItems.length === 0) {
+                // Return early if the user has no items
+                return {
+                    success: true,
+                    data: {
+                        id: 0,
+                        ownerId: String(userId),
+                        listName: "Unassigned Items",
+                        visibleToGroups: [],
+                        visibleToUsers: [],
+                        public: false,
+                        description: "Items that are not assigned to any list",
+                        parentId: null,
+                        sharedWith: [],
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                        listItems: [],
+                        isVirtualList: true
                     }
+                };
+            }
+            
+            // 3. Filter for orphaned items - those with no lists or only deleted lists
+            const orphanedItems = userItems.filter(item => {
+                // Check the 'lists' array in the item
+                if (!item.lists || item.lists.length === 0) {
+                    return true; // Item has no lists at all
                 }
+                
+                // Check if item has any lists that still exist
+                const hasValidList = item.lists.some(listId => 
+                    existingListIds.includes(parseInt(listId))
+                );
+                
+                return !hasValidList; // Return true for orphaned items (no valid lists)
             });
 
             // Create a virtual "list zero" containing orphaned items
