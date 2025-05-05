@@ -3,6 +3,36 @@ const { ApiError } = require('../middleware/errorHandler');
 const { Op } = require('sequelize');
 
 class ListItemService {
+    /**
+     * Determine if a user has permission to view a list item
+     * @param {Object} item - The list item to check
+     * @param {number|string} userId - The ID of the user
+     * @param {boolean} hasListAccess - Whether the user has access to the list this item belongs to
+     * @returns {boolean} - True if the user can view the item, false otherwise
+     */
+    static canUserViewItem(item, userId, hasListAccess) {
+        // User created the item
+        if (String(item.createdById) === String(userId)) {
+            return true;
+        }
+        
+        // Item is explicitly shared with user
+        if (item.visibleToUsers && item.visibleToUsers.includes(String(userId))) {
+            return true;
+        }
+        
+        // Item is public
+        if (item.isPublic) {
+            return true;
+        }
+        
+        // Item inherits list visibility and user has access to the list
+        if (item.matchListVisibility && hasListAccess) {
+            return true;
+        }
+        
+        return false;
+    }
     // Create a new list item
     static async createItem(data) {
         const transaction = await sequelize.transaction();

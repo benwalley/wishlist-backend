@@ -121,9 +121,12 @@ class UserService {
             });
         }
 
-        // Find the user by email
+        // Find the user by email - explicitly request the password field
         const user = await User.findOne({
             where: { email },
+            attributes: {
+                include: ['password'] // Explicitly include password
+            }
         });
 
         if (!user) {
@@ -134,8 +137,18 @@ class UserService {
             });
         }
 
-        // Compare password
-        const isPasswordValid = await bcrypt.compare(password, user.dataValues.password);
+        // Compare password - access raw value directly from the database
+        const passwordFromDB = user.getDataValue('password'); // Get raw value bypassing getter
+        
+        if (!passwordFromDB) {
+            throw new ApiError('User account requires password setup.', {
+                status: 401, 
+                errorType: 'AUTHENTICATION_ERROR',
+                publicMessage: 'This account requires password setup. Please use password reset.'
+            });
+        }
+        
+        const isPasswordValid = await bcrypt.compare(password, passwordFromDB);
         if (!isPasswordValid) {
             throw new ApiError('Invalid email or password.', {
                 status: 401,

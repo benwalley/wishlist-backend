@@ -5,7 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ac633e9b-c999-467f-b1d6-59c1a67c9c75" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/paths.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/paths.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/UserService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/UserService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/listItemService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listItemService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/listService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listService.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -120,7 +125,8 @@
       <workItem from="1745984054827" duration="3526000" />
       <workItem from="1746071760225" duration="2784000" />
       <workItem from="1746142956342" duration="7367000" />
-      <workItem from="1746229020187" duration="2284000" />
+      <workItem from="1746229020187" duration="3514000" />
+      <workItem from="1746398296967" duration="5661000" />
     </task>
     <servers />
   </component>

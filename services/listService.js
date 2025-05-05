@@ -169,18 +169,19 @@ class ListService {
                 };
             }
 
-            // Fetch listItems based on the provided conditions
-            const listItems = await ListItem.findAll({
+            // First get all non-deleted items in this list
+            const allListItems = await ListItem.findAll({
                 where: {
                     lists: { [Op.contains]: [list.id] },
-                    deleted: false,
-                    [Op.or]: [
-                        { createdById: String(userId) },
-                        { visibleToUsers: { [Op.contains]: [String(userId)] } },
-                        { isPublic: true }
-                    ]
+                    deleted: false
                 }
             });
+            
+            // Filter items based on visibility permissions
+            const ListItemService = require('./listItemService');
+            const listItems = allListItems.filter(item => 
+                ListItemService.canUserViewItem(item, userId, allowedToViewList)
+            );
 
             return {
                 success: true,

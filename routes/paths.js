@@ -5,6 +5,9 @@ const paths = {
     },
     login: {
         root: '/login'
+    },
+    giftTracking: {
+        root: '/gift-tracking'
     }
 };
 
