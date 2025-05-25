@@ -27,11 +27,28 @@ class UserService {
             // Check if email already exists
             const existingUser = await User.findOne({ where: { email } });
             if (existingUser) {
-                throw new ApiError('A user with this email already exists.', {
-                    status: 409,
-                    errorType: 'USER_EXISTS',
-                    publicMessage: 'An account with this email already exists.'
-                });
+                // If user exists but is inactive, reactivate it
+                if (existingUser.isActive === false) {
+                    // Update the user details
+                    const hashedPassword = await bcrypt.hash(password, 10);
+                    await existingUser.update({
+                        name: username,
+                        password: hashedPassword,
+                        isActive: true
+                    });
+                    
+                    // Generate tokens
+                    const tokens = await UserService.generateTokens(existingUser.id, existingUser.email);
+                    
+                    return { user: existingUser, tokens };
+                } else {
+                    // If user exists and is active, return error
+                    throw new ApiError('A user with this email already exists.', {
+                        status: 409,
+                        errorType: 'USER_EXISTS',
+                        publicMessage: 'An account with this email already exists.'
+                    });
+                }
             }
 
             // Hash password
@@ -42,6 +59,7 @@ class UserService {
                 name: username,
                 email,
                 password: hashedPassword,
+                isActive: true
             });
 
             // Create a default list for the user

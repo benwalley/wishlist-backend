@@ -5,12 +5,10 @@ const giftTrackingController = require('../controllers/giftTrackingController');
 const passport = require("passport");
 const groupController = require("../controllers/groupController");
 
-/**
- * @route   GET /api/gift-tracking
- * @desc    Get all items that the user is getting (purchased) or contributing to
- * @access  Private
- */
-router.get('/', passport.authenticate('jwt', { session: false }), giftTrackingController.getTrackedGifts);
 
+router.get('/', passport.authenticate('jwt', { session: false }), giftTrackingController.getTrackedGifts);
+router.get('/getting', passport.authenticate('jwt', { session: false }), giftTrackingController.getItemsUserIsGetting);
+router.post('/save', passport.authenticate('jwt', { session: false }), giftTrackingController.saveGiftTracking);
+router.post('/bulkSave', passport.authenticate('jwt', { session: false }), giftTrackingController.bulkSaveGiftTracking);
 
 module.exports = router;

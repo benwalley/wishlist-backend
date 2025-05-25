@@ -6,15 +6,24 @@ module.exports = {
     create: async (req, res) => {
         try {
             if (!req.user) {
-                return res.status(401).json({ error: 'User not authenticated.' });
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'User not authenticated.' 
+                });
             }
             const userId = req.user.id;
             const data = { ...req.body, userId };
             const newContributor = await ContributorService.createContributor(data);
-            return res.status(201).json(newContributor);
+            return res.status(201).json({
+                success: true,
+                data: newContributor
+            });
         } catch (error) {
             console.error('Error creating Contributor:', error);
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({ 
+                success: false, 
+                message: error.message 
+            });
         }
     },
 
@@ -22,13 +31,22 @@ module.exports = {
         try {
             const { itemId } = req.params;
             if (!itemId) {
-                return res.status(400).json({ error: 'itemId is required.' });
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'itemId is required.' 
+                });
             }
             const contributors = await ContributorService.getAllContributors({ itemId });
-            return res.status(200).json(contributors);
+            return res.status(200).json({
+                success: true,
+                data: contributors
+            });
         } catch (error) {
             console.error('Error fetching Contributors by itemId:', error);
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({ 
+                success: false, 
+                message: error.message 
+            });
         }
     },
 
@@ -37,12 +55,21 @@ module.exports = {
             const { id } = req.params;
             const contributor = await ContributorService.getContributorById(id);
             if (!contributor) {
-                return res.status(404).json({ error: 'Contributor not found.' });
+                return res.status(404).json({ 
+                    success: false, 
+                    message: 'Contributor not found.' 
+                });
             }
-            return res.status(200).json(contributor);
+            return res.status(200).json({
+                success: true,
+                data: contributor
+            });
         } catch (error) {
             console.error('Error fetching Contributor by ID:', error);
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({ 
+                success: false, 
+                message: error.message 
+            });
         }
     },
 
@@ -51,10 +78,16 @@ module.exports = {
             const { id } = req.params;
             const updates = req.body;
             const updatedContributor = await ContributorService.updateContributor(id, updates);
-            return res.status(200).json(updatedContributor);
+            return res.status(200).json({
+                success: true,
+                data: updatedContributor
+            });
         } catch (error) {
             console.error('Error updating Contributor:', error);
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({ 
+                success: false, 
+                message: error.message 
+            });
         }
     },
 
@@ -132,10 +165,16 @@ module.exports = {
                 }
             }
 
-            return res.status(200).json({ results });
+            return res.status(200).json({
+                success: true,
+                data: { results }
+            });
         } catch (error) {
             console.error('Error in updateBatch:', error);
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({
+                success: false,
+                message: error.message
+            });
         }
     },
 
@@ -145,10 +184,16 @@ module.exports = {
         try {
             const { id } = req.params;
             const deletedContributor = await ContributorService.deleteContributor(id);
-            return res.status(200).json(deletedContributor);
+            return res.status(200).json({
+                success: true,
+                data: deletedContributor
+            });
         } catch (error) {
             console.error('Error deleting Contributor:', error);
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({ 
+                success: false, 
+                message: error.message 
+            });
         }
     },
 };

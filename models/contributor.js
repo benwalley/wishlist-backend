@@ -5,6 +5,7 @@ module.exports = (sequelize) => {
     class Contributor extends Model {
         static associate(models) {
             this.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
+            this.belongsTo(models.ListItem, { foreignKey: 'itemId', as: 'item' });
         }
     }
 
@@ -36,6 +37,15 @@ module.exports = (sequelize) => {
             },
             numberGetting: {
                 type: DataTypes.INTEGER,
+                allowNull: true,
+            },
+            status: {
+                type: DataTypes.STRING,
+                allowNull: true,
+                defaultValue: 'none'
+            },
+            actualPrice: {
+                type: DataTypes.DECIMAL(10, 2),
                 allowNull: true,
             },
         },
