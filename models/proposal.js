@@ -10,7 +10,6 @@ module.exports = (sequelize, DataTypes) => {
         static associate(models) {
             // Define relationships
             this.belongsTo(models.ListItem, { foreignKey: 'itemId', as: 'itemData' });
-            this.belongsTo(models.User, { foreignKey: 'proposalCreatorId', as: 'creator' });
             this.hasMany(models.ProposalParticipant, { foreignKey: 'proposalId', as: 'proposalParticipants' });
         }
     }
@@ -44,7 +43,7 @@ module.exports = (sequelize, DataTypes) => {
         proposalStatus: {
             type: DataTypes.STRING,
             allowNull: false,
-            defaultValue: 'none',
+            defaultValue: 'pending',
         },
     }, {
         sequelize,

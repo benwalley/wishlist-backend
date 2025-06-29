@@ -2,32 +2,30 @@ const ListService = require('../../services/listService');
 
 exports.delete = async (req, res) => {
     try {
-        // Ensure the user is authenticated
         if (!req.user) {
-            return res.status(401).json({ error: 'User not authenticated.' });
+            return res.status(401).json({ success: false, message: 'User not authenticated.' });
         }
 
-        // Get the authenticated user's ID from PassportJS
-        const ownerId = req.user.id;
-
-        // Ensure an id is provided (assuming route: DELETE /list/:id)
         const { id } = req.params;
-        console.log(id)
+        const userId = req.user.id;
+
         if (!id) {
-            return res.status(400).json({ error: 'List item id is required.' });
+            return res.status(400).json({ success: false, message: 'List id is required.' });
         }
 
-        // Attempt to delete the ListItem
+        const list = await ListService.getListById(id, userId);
+        if (!list || !list.success) {
+            return res.status(404).json({ success: false, message: 'List not found.' });
+        }
+
+        if (String(list.data.ownerId) !== String(userId)) {
+            return res.status(403).json({ success: false, message: 'Only the list owner can delete this list.' });
+        }
+
         const deletedItem = await ListService.deleteList(id);
-        if (!deletedItem) {
-            // If no item was found/deleted, respond with a 404 Not Found
-            return res.status(404).json({ error: 'List item not found.' });
-        }
-
-        // Respond with the deleted item (or a success message if preferred)
-        res.status(200).json(deletedItem);
+        res.status(200).json({ success: true, data: deletedItem });
     } catch (error) {
-        console.error('Error deleting ListItem:', error);
-        res.status(400).json({ error: error.message });
+        console.error('Error deleting List:', error);
+        res.status(400).json({ success: false, message: error.message });
     }
 };

@@ -115,16 +115,16 @@ async function getItemsUserIsGetting(req, res, next) {
 async function bulkSaveGiftTracking(req, res, next) {
     try {
         const userId = req.user.id;
-        const trackingDataArray = req.body;
+        const { changedItems = [], changedRecipients = [] } = req.body;
 
-        if (!Array.isArray(trackingDataArray)) {
+        if (!Array.isArray(changedItems) && !Array.isArray(changedRecipients)) {
             return res.status(400).json({
                 success: false,
-                message: 'Request body must be an array of tracking data objects'
+                message: 'Request body must contain changedItems and/or changedRecipients arrays'
             });
         }
 
-        const result = await GiftTrackingService.bulkSaveGiftTracking(trackingDataArray, userId);
+        const result = await GiftTrackingService.bulkSaveGiftTracking({ changedItems, changedRecipients }, userId);
 
         return res.status(200).json(result);
     } catch (error) {
@@ -143,9 +143,115 @@ async function bulkSaveGiftTracking(req, res, next) {
     }
 }
 
+/**
+ * Get all users that are accessible to you and that you haven't gotten a gift for
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+async function getUsersWithoutGifts(req, res, next) {
+    try {
+        const userId = req.user.id;
+
+        const result = await GiftTrackingService.getUsersWithoutGifts(userId);
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error('Error in getUsersWithoutGifts controller:', error);
+
+        // If error is already formatted by the service, pass it on
+        if (error.statusCode || error.message) {
+            next(error);
+        } else {
+            // Otherwise format it properly with the success structure
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to retrieve users without gifts'
+            });
+        }
+    }
+}
+
+/**
+ * Bulk update getting records - create, update, or delete based on qty
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+async function bulkUpdateGetting(req, res, next) {
+    try {
+        const currentUserId = req.user.id;
+        const gettingDataArray = req.body;
+
+        if (!Array.isArray(gettingDataArray)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Request body must be an array of getting data objects'
+            });
+        }
+
+        const result = await GiftTrackingService.bulkUpdateGetting(gettingDataArray, currentUserId);
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error('Error in bulkUpdateGetting controller:', error);
+
+        // If error is already formatted by the service, pass it on
+        if (error.statusCode || error.message) {
+            next(error);
+        } else {
+            // Otherwise format it properly with the success structure
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to bulk update getting records'
+            });
+        }
+    }
+}
+
+/**
+ * Bulk update go_in_on records - create or delete based on participation
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+async function bulkUpdateGoInOn(req, res, next) {
+    try {
+        const currentUserId = req.user.id;
+        const goInOnDataArray = req.body;
+
+        if (!Array.isArray(goInOnDataArray)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Request body must be an array of go_in_on data objects'
+            });
+        }
+
+        const result = await GiftTrackingService.bulkUpdateGoInOn(goInOnDataArray, currentUserId);
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error('Error in bulkUpdateGoInOn controller:', error);
+
+        // If error is already formatted by the service, pass it on
+        if (error.statusCode || error.message) {
+            next(error);
+        } else {
+            // Otherwise format it properly with the success structure
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to bulk update go_in_on records'
+            });
+        }
+    }
+}
+
 module.exports = {
     getTrackedGifts,
     saveGiftTracking,
     getItemsUserIsGetting,
-    bulkSaveGiftTracking
+    bulkSaveGiftTracking,
+    getUsersWithoutGifts,
+    bulkUpdateGetting,
+    bulkUpdateGoInOn
 };

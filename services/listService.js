@@ -1,4 +1,4 @@
-const { List, Group, ListItem, sequelize } = require('../models');
+const { List, Group, ListItem, Getting, GoInOn, sequelize } = require('../models');
 const { Op } = require('sequelize'); // Import Op from Sequelize
 
 
@@ -75,7 +75,7 @@ class ListService {
 
                 // Add group to visibleToGroups if not already there
                 const visibleToGroups = Array.isArray(list.visibleToGroups) ? [...list.visibleToGroups] : [];
-                
+
                 if (!visibleToGroups.includes(groupId)) {
                     visibleToGroups.push(groupId);
                     await list.update({ visibleToGroups });
@@ -119,7 +119,6 @@ class ListService {
      * @returns {Promise<Object|null>}
      */
     async getListById(id, userId) {
-        console.log(userId)
         try {
             // Handle special case for list zero (orphaned items)
             if (id === '0') {
@@ -169,17 +168,27 @@ class ListService {
                 };
             }
 
-            // First get all non-deleted items in this list
+            // First get all non-deleted items in this list with getting and goInOn data
             const allListItems = await ListItem.findAll({
                 where: {
                     lists: { [Op.contains]: [list.id] },
                     deleted: false
-                }
+                },
+                include: [
+                    {
+                        model: Getting,
+                        as: 'getting'
+                    },
+                    {
+                        model: GoInOn,
+                        as: 'goInOn'
+                    }
+                ]
             });
-            
+
             // Filter items based on visibility permissions
             const ListItemService = require('./listItemService');
-            const listItems = allListItems.filter(item => 
+            const listItems = allListItems.filter(item =>
                 ListItemService.canUserViewItem(item, userId, allowedToViewList)
             );
 
@@ -245,7 +254,7 @@ class ListService {
                 raw: true
             });
             const existingListIds = existingLists.map(list => list.id);
-            
+
             // 2. Get all non-deleted items created by the user
             const userItems = await ListItem.findAll({
                 where: {
@@ -254,7 +263,7 @@ class ListService {
                 },
                 raw: true
             });
-            
+
             if (userItems.length === 0) {
                 // Return early if the user has no items
                 return {
@@ -276,19 +285,19 @@ class ListService {
                     }
                 };
             }
-            
+
             // 3. Filter for orphaned items - those with no lists or only deleted lists
             const orphanedItems = userItems.filter(item => {
                 // Check the 'lists' array in the item
                 if (!item.lists || item.lists.length === 0) {
                     return true; // Item has no lists at all
                 }
-                
+
                 // Check if item has any lists that still exist
-                const hasValidList = item.lists.some(listId => 
+                const hasValidList = item.lists.some(listId =>
                     existingListIds.includes(parseInt(listId))
                 );
-                
+
                 return !hasValidList; // Return true for orphaned items (no valid lists)
             });
 
@@ -488,6 +497,88 @@ class ListService {
     }
 
     /**
+     * Get lists owned by a specific user that are accessible to the current user
+     * @param {String} targetUserId - ID of the user whose lists we want to get
+     * @param {String} currentUserId - ID of the currently authenticated user
+     * @returns {Promise<Object>} - Lists owned by targetUserId that currentUserId can access
+     */
+    async getListsByUserIdForCurrentUser(targetUserId, currentUserId) {
+        try {
+            // Get all lists owned by the target user
+            const targetUserLists = await List.findAll({
+                where: { ownerId: String(targetUserId) }
+            });
+
+            if (targetUserLists.length === 0) {
+                return {
+                    success: true,
+                    data: []
+                };
+            }
+
+            // Get user's groups to check group-based access
+            const userGroups = await Group.findAll({
+                where: {
+                    members: {
+                        [Op.contains]: [String(currentUserId)]
+                    },
+                    deleted: false
+                },
+                attributes: ['id']
+            });
+
+            const userGroupIds = userGroups.map(group => group.id);
+
+            // Filter lists that the current user can access
+            const accessibleLists = targetUserLists.filter(list => {
+                // Current user is the owner (same as target user)
+                if (String(list.ownerId) === String(currentUserId)) {
+                    return true;
+                }
+
+                // List is shared directly with current user
+                if (list.visibleToUsers && list.visibleToUsers.includes(String(currentUserId))) {
+                    return true;
+                }
+
+                // List is shared with a group the current user belongs to
+                if (list.visibleToGroups && list.visibleToGroups.some(groupId => userGroupIds.includes(groupId))) {
+                    return true;
+                }
+
+                return false;
+            });
+
+            // Add number of non-deleted items for each accessible list
+            const listsWithCount = await Promise.all(accessibleLists.map(async (list) => {
+                const itemCount = await ListItem.count({
+                    where: {
+                        lists: { [Op.contains]: [list.id] },
+                        deleted: false
+                    }
+                });
+
+                return {
+                    ...list.toJSON(),
+                    numberItems: itemCount
+                };
+            }));
+
+            return {
+                success: true,
+                data: listsWithCount
+            };
+        } catch (error) {
+            console.error('Error fetching lists by user ID for current user:', error);
+            return {
+                success: false,
+                message: 'An error occurred while fetching user lists',
+                error: error.message
+            };
+        }
+    }
+
+    /**
      * Get all lists a user has access to (owned, shared directly, or via groups)
      * @param {String} userId - User ID
      * @returns {Promise<Object>} - All accessible lists
@@ -496,7 +587,7 @@ class ListService {
         try {
             // 1. Get lists the user owns (including orphaned items list)
             const ownedListsResult = await this.getAllListsWithOrphaned(userId);
-            
+
             // 2. Get lists shared directly with the user
             const sharedDirectlyLists = await List.findAll({
                 where: {
@@ -505,7 +596,7 @@ class ListService {
                     }
                 }
             });
-            
+
             // 3. Get user's groups
             const userGroups = await Group.findAll({
                 where: {
@@ -516,9 +607,9 @@ class ListService {
                 },
                 attributes: ['id']
             });
-            
+
             const userGroupIds = userGroups.map(group => group.id);
-            
+
             // 4. Get lists shared with the user's groups
             const sharedViaGroupsLists = await List.findAll({
                 where: {
@@ -527,31 +618,31 @@ class ListService {
                     }
                 }
             });
-            
+
             // 5. Combine all lists, removing duplicates
             const allLists = [...ownedListsResult];
-            
+
             // Add shared directly lists if not already included
             sharedDirectlyLists.forEach(list => {
                 if (!allLists.some(l => l.id === list.id)) {
                     allLists.push(list);
                 }
             });
-            
+
             // Add shared via groups lists if not already included
             sharedViaGroupsLists.forEach(list => {
                 if (!allLists.some(l => l.id === list.id)) {
                     allLists.push(list);
                 }
             });
-            
+
             // Add number of non-deleted items for each list (for lists that don't already have this property)
             const listsWithCount = await Promise.all(allLists.map(async (list) => {
                 // Skip if list already has numberItems property
                 if (list.numberItems !== undefined) {
                     return list;
                 }
-                
+
                 const itemCount = await ListItem.count({
                     where: {
                         deleted: false
@@ -567,13 +658,13 @@ class ListService {
                         }
                     }]
                 });
-                
+
                 return {
                     ...(list.toJSON ? list.toJSON() : list),
                     numberItems: itemCount
                 };
             }));
-            
+
             return {
                 success: true,
                 data: listsWithCount

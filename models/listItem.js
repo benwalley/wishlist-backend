@@ -9,9 +9,9 @@ module.exports = (sequelize) => {
          */
         static associate(models) {
             // Define relationships
-            this.belongsTo(models.User, { foreignKey: 'createdById', as: 'creator' });
-        this.belongsToMany(models.List, { through: 'list_items_lists', foreignKey: 'itemId', as: 'associatedLists' });
-            this.hasMany(models.Contributor, { foreignKey: 'itemId', as: 'contributors' });
+            this.belongsToMany(models.List, { through: 'list_items_lists', foreignKey: 'itemId', as: 'associatedLists' });
+            this.hasMany(models.Getting, { foreignKey: 'itemId', as: 'getting' });
+            this.hasMany(models.GoInOn, { foreignKey: 'itemId', as: 'goInOn' });
             this.hasMany(models.Seen, { foreignKey: 'itemId', as: 'seenBy' });
             this.hasMany(models.Comment, { foreignKey: 'itemId', as: 'comments' });
             this.hasMany(models.Money, { foreignKey: 'itemId', as: 'moneyTransactions' });

@@ -1,4 +1,4 @@
-const { ListItem, List, sequelize } = require('../models'); // Adjust the path as per your project structure
+const { ListItem, List, Getting, GoInOn, sequelize } = require('../models'); // Adjust the path as per your project structure
 const { ApiError } = require('../middleware/errorHandler');
 const { Op } = require('sequelize');
 
@@ -108,7 +108,18 @@ class ListItemService {
     // Get a single list item by ID
     static async getItemById(id) {
         try {
-            const item = await ListItem.findByPk(id);
+            const item = await ListItem.findByPk(id, {
+                include: [
+                    {
+                        model: Getting,
+                        as: 'getting'
+                    },
+                    {
+                        model: GoInOn,
+                        as: 'goInOn'
+                    }
+                ]
+            });
             if (!item) {
                 throw new ApiError('ListItem not found', {
                     status: 404,

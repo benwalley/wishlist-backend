@@ -85,7 +85,7 @@ exports.addUsers = async (req, res) => {
 };
 
 /**
- * Invite a user to a group via email
+ * Invite users to a group via email (supports single email or comma-separated emails)
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
@@ -93,7 +93,7 @@ exports.inviteToGroup = async (req, res) => {
     try {
         // Get authenticated user's ID
         if (!req.user) {
-            return res.status(401).json({ error: 'User not authenticated.' });
+            return res.status(401).json({ success: false, message: 'User not authenticated.' });
         }
 
         const invitingUserId = req.user.id;
@@ -101,36 +101,125 @@ exports.inviteToGroup = async (req, res) => {
         const { email } = req.body;
 
         if (!groupId) {
-            return res.status(400).json({ error: 'Group ID is required.' });
+            return res.status(400).json({ success: false, message: 'Group ID is required.' });
         }
 
         if (!email) {
-            return res.status(400).json({ error: 'Email is required.' });
+            return res.status(400).json({ success: false, message: 'Email is required.' });
         }
 
-        try {
-            // Find or create a user with the provided email
-            const invitedUser = await UserService.findOrCreateUserByEmail(email);
+        // Parse emails - handle both single email and comma-separated emails
+        const emailList = email.split(',').map(e => e.trim()).filter(e => e.length > 0);
+        console.log(emailList);
 
-            // Add user to the group's invited list
-            await GroupService.inviteUserToGroup(groupId, invitedUser.id, invitingUserId);
+        if (emailList.length === 0) {
+            return res.status(400).json({ success: false, message: 'At least one valid email is required.' });
+        }
 
+        const results = [];
+        const errors = [];
+        const alreadyMembers = [];
+
+        // Process each email
+        for (const emailAddress of emailList) {
+            try {
+                // Find or create a user with the provided email
+                const invitedUser = await UserService.findOrCreateUserByEmail(emailAddress);
+
+                // Add user to the group's invited list
+                await GroupService.inviteUserToGroup(groupId, invitedUser.id, invitingUserId);
+
+                results.push({
+                    email: invitedUser.email,
+                    success: true,
+                    message: 'Invited successfully'
+                });
+
+            } catch (error) {
+                if (error.message.includes('Group not found')) {
+                    return res.status(404).json({ success: false, message: 'Group not found.' });
+                } else if (error.message.includes('Access denied') || error.message.includes('Only group owners')) {
+                    return res.status(403).json({ success: false, message: error.message });
+                } else if (error.message.includes('User is already a member of this group')) {
+                    alreadyMembers.push({
+                        email: emailAddress,
+                        success: false,
+                        message: 'Already a member of this group'
+                    });
+                } else if (error.message.includes('User has already been invited to this group')) {
+                    alreadyMembers.push({
+                        email: emailAddress,
+                        success: false,
+                        message: 'Already invited to this group'
+                    });
+                } else {
+                    errors.push({
+                        email: emailAddress,
+                        success: false,
+                        message: error.message
+                    });
+                }
+            }
+        }
+
+        // Determine response based on results
+        const successCount = results.length;
+        const errorCount = errors.length;
+        const alreadyMemberCount = alreadyMembers.length;
+        const allResults = [...results, ...errors, ...alreadyMembers];
+
+        // Build response message
+        let message = '';
+        const messageParts = [];
+
+        if (successCount > 0) {
+            messageParts.push(`${successCount} user${successCount > 1 ? 's' : ''} invited successfully`);
+        }
+
+        if (alreadyMemberCount > 0) {
+            messageParts.push(`${alreadyMemberCount} user${alreadyMemberCount > 1 ? 's' : ''} already part of the group`);
+        }
+
+        if (errorCount > 0) {
+            messageParts.push(`${errorCount} invitation${errorCount > 1 ? 's' : ''} failed`);
+        }
+
+        message = messageParts.join(', ') + '.';
+
+        // Determine status code and success flag
+        if (successCount > 0 && errorCount === 0) {
+            // All invitations successful (some might be already members)
             return res.status(200).json({
                 success: true,
-                message: `User ${invitedUser.email} invited to group successfully.`,
+                message: message,
+                results: allResults
             });
-
-        } catch (error) {
-            if (error.message.includes('Group not found')) {
-                return res.status(404).json({ error: 'Group not found.' });
-            } else if (error.message.includes('Access denied') || error.message.includes('Only group owners')) {
-                return res.status(403).json({ error: error.message });
-            }
-            throw error; // Re-throw for the outer catch block to handle
+        } else if (successCount > 0 && errorCount > 0) {
+            // Partial success
+            return res.status(207).json({
+                success: false,
+                message: message,
+                results: allResults
+            });
+        } else if (alreadyMemberCount > 0 && errorCount === 0) {
+            // All users were already members/invited
+            return res.status(200).json({
+                success: true,
+                message: message,
+                results: allResults
+            });
+        } else {
+            // All failed
+            return res.status(400).json({
+                success: false,
+                message: message,
+                results: allResults
+            });
         }
+
     } catch (error) {
         console.error('Error inviting user to group:', error);
-        return res.status(500).json({ error: 'Failed to invite user to group.' });
+        return res.status(500).json({ success: false, message: 'Failed to invite user to group.' });
     }
 };
 
@@ -521,9 +610,9 @@ exports.bulkShareWithGroup = async (req, res) => {
     try {
         // Check if user is authenticated
         if (!req.user) {
-            return res.status(401).json({ 
+            return res.status(401).json({
                 success: false,
-                message: 'User not authenticated.' 
+                message: 'User not authenticated.'
             });
         }
 
@@ -542,7 +631,7 @@ exports.bulkShareWithGroup = async (req, res) => {
         if (Array.isArray(listIds) && listIds.length > 0) {
             const listResults = await ListService.bulkShareListsWithGroup(listIds, groupId, userId);
             results.lists = listResults;
-            
+
             // If lists sharing failed, mark overall operation as failed
             if (!listResults.success) {
                 results.success = false;
@@ -553,7 +642,7 @@ exports.bulkShareWithGroup = async (req, res) => {
         if (Array.isArray(questionIds) && questionIds.length > 0) {
             const questionResults = await QAService.bulkShareQuestionsWithGroup(questionIds, groupId, userId);
             results.questions = questionResults;
-            
+
             // If questions sharing failed, mark overall operation as failed
             if (!questionResults.success) {
                 results.success = false;

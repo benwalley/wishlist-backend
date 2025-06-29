@@ -9,14 +9,28 @@
       <change beforePath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0/storage_v2/_src_/database/wishlist.xbVDxg/schema/public.abK9xQ.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0/storage_v2/_src_/database/wishlist.xbVDxg/schema/public.abK9xQ.meta" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/contributorController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/contributorController.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/controllers/giftTrackingController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/giftTrackingController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/groupController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/groupController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/listItemController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/listItemController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/lists/deleteController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/lists/deleteController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/lists/updateController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/lists/updateController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/usersController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/usersController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/migrations/add-proposal-status-column.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/comment.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/comment.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/contributor.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/contributor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/giftStatus.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/group.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/group.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/listItem.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/listItem.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/money.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/money.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/proposal.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/proposal.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/proposalParticipant.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/proposalParticipant.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/question.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/question.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/seen.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/seen.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/routes/giftTracking.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/giftTracking.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/UserService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/UserService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/lists.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/lists.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/services/giftTrackingService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/giftTrackingService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/listItemService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listItemService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/listService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/proposalService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/proposalService.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -61,6 +75,7 @@
       &quot;postgresql&quot;
     ],
     &quot;com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File&quot;: [
+      &quot;HTML&quot;,
       &quot;TEXT&quot;
     ]
   }
@@ -81,8 +96,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-6a121458b545-JavaScript-PS-251.25410.148" />
-        <option value="bundled-php-predefined-a98d8de5180a-c5828cf854d9-com.jetbrains.php.sharedIndexes-PS-251.25410.148" />
+        <option value="bundled-js-predefined-d6986cc7102b-b26f3e71634d-JavaScript-PS-251.26094.133" />
+        <option value="bundled-php-predefined-a98d8de5180a-c5828cf854d9-com.jetbrains.php.sharedIndexes-PS-251.26094.133" />
       </set>
     </attachedChunks>
   </component>
@@ -144,7 +159,20 @@
       <workItem from="1747959603845" duration="1090000" />
       <workItem from="1747961060947" duration="7351000" />
       <workItem from="1748056657005" duration="15457000" />
-      <workItem from="1748188403989" duration="2066000" />
+      <workItem from="1748188403989" duration="27364000" />
+      <workItem from="1748396077479" duration="4009000" />
+      <workItem from="1748568394957" duration="2478000" />
+      <workItem from="1749092504457" duration="2714000" />
+      <workItem from="1749168454109" duration="9806000" />
+      <workItem from="1749527190709" duration="630000" />
+      <workItem from="1749598803507" duration="1210000" />
+      <workItem from="1749922630626" duration="7236000" />
+      <workItem from="1750089384503" duration="669000" />
+      <workItem from="1750129651128" duration="2641000" />
+      <workItem from="1750177237095" duration="337000" />
+      <workItem from="1750207630375" duration="618000" />
+      <workItem from="1750610840400" duration="3295000" />
+      <workItem from="1751139816452" duration="660000" />
     </task>
     <servers />
   </component>

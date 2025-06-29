@@ -1,5 +1,5 @@
 const ListItemService = require('../services/listItemService');
-const ListService = require('../services/listService'); 
+const ListService = require('../services/listService');
 const { ApiError } = require('../middleware/errorHandler');
 
 /**
@@ -43,7 +43,7 @@ exports.update = async (req, res, next) => {
         const { id } = req.params;
         const updates = req.body;
         const userId = req.user.id;
-        
+
         const updatedItem = await ListItemService.updateItem(id, updates, userId);
         res.status(200).json({
             success: true,
@@ -65,10 +65,10 @@ exports.delete = async (req, res, next) => {
     try {
         const { id } = req.params;
         const userId = req.user.id;
-        
+
         // First get the item to check ownership
         const item = await ListItemService.getItemById(id);
-        
+
         // Check if the current user is the creator of the item
         if (String(item.createdById) !== String(userId)) {
             throw new ApiError('Unauthorized', {
@@ -77,7 +77,7 @@ exports.delete = async (req, res, next) => {
                 publicMessage: 'You do not have permission to delete this list item'
             });
         }
-        
+
         const deletedItem = await ListItemService.deleteItem(id);
         res.status(200).json({
             success: true,
@@ -98,10 +98,10 @@ exports.delete = async (req, res, next) => {
 exports.getAll = async (req, res, next) => {
     try {
         const filter = req.query; // Use query params for filtering
-        
+
         // You could add user-specific filtering here
         // e.g., filter.userId = req.user.id;
-        
+
         const items = await ListItemService.getAllItems(filter);
         res.status(200).json({
             success: true,
@@ -123,10 +123,7 @@ exports.getById = async (req, res, next) => {
     try {
         const { id } = req.params;
         const item = await ListItemService.getItemById(id);
-        
-        // You could add authorization check here if needed
-        // For example, check if the user has access to the list this item belongs to
-        
+
         res.status(200).json({
             success: true,
             data: item
@@ -147,7 +144,7 @@ exports.getNotInList = async (req, res, next) => {
     try {
         const userId = req.user.id;
         const items = await ListItemService.getItemsNotInAnyList(userId);
-        
+
         res.status(200).json({
             success: true,
             data: items
@@ -168,25 +165,25 @@ exports.bulkAddToList = async (req, res, next) => {
     try {
         // Validate input
         const { listId, itemIds } = req.body;
-        
+
         if (!listId) {
             return res.status(400).json({
                 success: false,
                 message: 'List ID is required'
             });
         }
-        
+
         if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
             return res.status(400).json({
                 success: false,
                 message: 'A non-empty array of item IDs is required'
             });
         }
-        
+
         const userId = req.user.id;
-        
+
         const result = await ListItemService.bulkAddItemsToList(listId, itemIds, userId);
-        
+
         res.status(200).json({
             success: true,
             data: result
@@ -207,7 +204,7 @@ exports.getMyItems = async (req, res, next) => {
     try {
         const userId = req.user.id;
         const items = await ListItemService.getUserItems(userId);
-        
+
         res.status(200).json({
             success: true,
             data: items

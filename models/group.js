@@ -10,7 +10,6 @@ module.exports = (sequelize) => {
          */
         static associate(models) {
             // Define relationships
-            this.belongsTo(models.User, { foreignKey: 'ownerId', as: 'owner' });
             this.hasMany(models.Question, { foreignKey: 'groupId', as: 'questions' });
             this.hasMany(models.Comment, { foreignKey: 'groupId', as: 'comments' });
         }

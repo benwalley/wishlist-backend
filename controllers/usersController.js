@@ -19,7 +19,10 @@ exports.getCurrentUser = async (req, res) => {
  */
 exports.getYourUsers = async (req, res) => {
     if (!req.user) {
-        return res.status(401).json({ error: 'User not authenticated.' });
+        return res.status(401).json({ 
+            success: false, 
+            message: 'User not authenticated.' 
+        });
     }
 
     try {
@@ -32,10 +35,16 @@ exports.getYourUsers = async (req, res) => {
             }
         });
 
-        res.json(yourUsers);
+        res.status(200).json({
+            success: true,
+            data: yourUsers
+        });
     } catch (error) {
         console.error('Error fetching users:', error);
-        res.status(500).json({ error: 'An error occurred while fetching users.' });
+        res.status(500).json({ 
+            success: false, 
+            message: 'An error occurred while fetching users.' 
+        });
     }
 };
 

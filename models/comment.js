@@ -10,9 +10,7 @@ module.exports = (sequelize) => {
          */
         static associate(models) {
             // Define relationships
-            this.belongsTo(models.User, { foreignKey: 'createdById', as: 'creator' });
             this.belongsTo(models.Group, { foreignKey: 'groupId', as: 'group' });
-            this.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
             this.belongsTo(models.ListItem, { foreignKey: 'itemId', as: 'item' });
             this.belongsTo(models.Comment, { foreignKey: 'parentId', as: 'parent' });
             this.hasMany(models.Comment, { foreignKey: 'parentId', as: 'replies' });

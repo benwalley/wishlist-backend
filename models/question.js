@@ -11,7 +11,6 @@ module.exports = (sequelize) => {
         static associate(models) {
             // Define associations
             this.hasMany(models.Answer, { foreignKey: 'questionId', as: 'answers' });
-            this.belongsTo(models.User, { foreignKey: 'askedById', as: 'askedBy' });
             this.belongsTo(models.Group, { foreignKey: 'groupId', as: 'group' });
 
             this.belongsToMany(models.Group, {
@@ -19,13 +18,6 @@ module.exports = (sequelize) => {
                 foreignKey: 'questionId',
                 otherKey: 'groupId',
                 as: 'sharedWithGroups'
-            });
-
-            this.belongsToMany(models.User, {
-                through: 'QuestionUsers',
-                foreignKey: 'questionId',
-                otherKey: 'userId',
-                as: 'sharedWithUsers'
             });
         }
     }

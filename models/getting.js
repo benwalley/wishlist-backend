@@ -2,38 +2,38 @@
 const { Model, DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-    class Contributor extends Model {
+    class Getting extends Model {
         static associate(models) {
-            this.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
             this.belongsTo(models.ListItem, { foreignKey: 'itemId', as: 'item' });
+            this.belongsTo(models.Proposal, { foreignKey: 'proposalId', as: 'proposal' });
         }
     }
 
-    Contributor.init(
+    Getting.init(
         {
-            userId: {
+            giverId: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
+                references: {
+                    model: 'users',
+                    key: 'id'
+                }
+            },
+            getterId: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+                references: {
+                    model: 'users',
+                    key: 'id'
+                }
             },
             itemId: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
-            },
-            getting: {
-                type: DataTypes.BOOLEAN,
-                defaultValue: false,
-            },
-            contributing: {
-                type: DataTypes.BOOLEAN,
-                defaultValue: false,
-            },
-            contributeAmount: {
-                type: DataTypes.DECIMAL(10, 2),
-                allowNull: true,
-            },
-            isAmountPrivate: {
-                type: DataTypes.BOOLEAN,
-                defaultValue: false,
+                references: {
+                    model: 'list_items',
+                    key: 'id'
+                }
             },
             numberGetting: {
                 type: DataTypes.INTEGER,
@@ -48,22 +48,22 @@ module.exports = (sequelize) => {
                 type: DataTypes.DECIMAL(10, 2),
                 allowNull: true,
             },
-            giftOwnerId: {
+            proposalId: {
                 type: DataTypes.INTEGER,
                 allowNull: true,
                 references: {
-                    model: 'users',
+                    model: 'proposals',
                     key: 'id'
                 }
             },
         },
         {
             sequelize,
-            modelName: 'Contributor',
-            tableName: 'contributors', // Explicitly specify the table name
-            timestamps: false,         // Disable createdAt and updatedAt
+            modelName: 'Getting',
+            tableName: 'getting',
+            timestamps: true,
         }
     );
 
-    return Contributor;
+    return Getting;
 };

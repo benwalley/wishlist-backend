@@ -1,4 +1,4 @@
-const { Proposal, ProposalParticipant, User, ListItem, sequelize } = require('../models');
+const { Proposal, ProposalParticipant, User, ListItem, Getting, sequelize } = require('../models');
 const { ApiError } = require('../middleware/errorHandler');
 const { Op } = require('sequelize');
 
@@ -54,10 +54,8 @@ class ProposalService {
                     {
                         model: ProposalParticipant,
                         as: 'proposalParticipants',
-                        include: [{ model: User, as: 'user' }]
                     },
                     { model: ListItem, as: 'itemData' },
-                    { model: User, as: 'creator' }
                 ]
             });
 
@@ -347,7 +345,6 @@ class ProposalService {
      */
     static async getProposalsForUser(userId) {
         try {
-            // First find all proposal IDs where the user is a participant
             const participantRecords = await ProposalParticipant.findAll({
                 attributes: ['proposalId'],
                 where: { userId },
@@ -369,10 +366,8 @@ class ProposalService {
                     {
                         model: ProposalParticipant,
                         as: 'proposalParticipants',
-                        include: [{ model: User, as: 'user' }]
                     },
                     { model: ListItem, as: 'itemData' },
-                    { model: User, as: 'creator' }
                 ]
             });
 
@@ -440,6 +435,12 @@ class ProposalService {
                 { where: { id: proposalId }, transaction }
             );
 
+            // Handle Getting relationships when proposal is accepted
+            if (newStatus === 'accepted') {
+                const proposal = await Proposal.findByPk(proposalId, { transaction });
+                await this.handleGettingRelationships(proposal, allParticipants, transaction);
+            }
+
             await transaction.commit();
             return proposalUser;
         } catch (error) {
@@ -452,6 +453,76 @@ class ProposalService {
                 errorType: 'DATABASE_ERROR',
                 publicMessage: 'Unable to update your response. Please try again.'
             });
+        }
+    }
+
+    /**
+     * Handle Getting relationships when a proposal is created
+     * @param {Object} proposal - The created proposal
+     * @param {Array} proposalParticipants - Array of proposal participants
+     * @param {Object} transaction - Database transaction
+     */
+    static async handleGettingRelationships(proposal, proposalParticipants, transaction) {
+        try {
+            // Get the item to find out who owns it (getterId)
+            const item = await ListItem.findByPk(proposal.itemId, { transaction });
+            if (!item) {
+                throw new ApiError('Item not found', {
+                    status: 404,
+                    errorType: 'NOT_FOUND',
+                    publicMessage: 'The item for this proposal could not be found'
+                });
+            }
+
+            const getterId = item.createdById;
+
+            // Collect all userIds that should have Getting records (proposal creator + participants)
+            const allUserIds = [proposal.proposalCreatorId];
+            if (proposalParticipants && Array.isArray(proposalParticipants)) {
+                proposalParticipants.forEach(participant => {
+                    if (participant.userId && !allUserIds.includes(participant.userId)) {
+                        allUserIds.push(participant.userId);
+                    }
+                });
+            }
+
+            // Check for existing Getting records for these users and this item
+            const existingGettingRecords = await Getting.findAll({
+                where: {
+                    itemId: proposal.itemId,
+                    getterId: getterId,
+                    giverId: { [Op.in]: allUserIds }
+                },
+                transaction
+            });
+
+            // Create a map of existing records by giverId for quick lookup
+            const existingGettingMap = existingGettingRecords.reduce((map, record) => {
+                map[record.giverId] = record;
+                return map;
+            }, {});
+
+            // Process each user - either update existing Getting record or create new one
+            for (const userId of allUserIds) {
+                if (existingGettingMap[userId]) {
+                    // Update existing Getting record with the proposal ID
+                    await existingGettingMap[userId].update({
+                        proposalId: proposal.id
+                    }, { transaction });
+                } else {
+                    // Create new Getting record
+                    await Getting.create({
+                        giverId: userId,
+                        getterId: getterId,
+                        itemId: proposal.itemId,
+                        proposalId: proposal.id,
+                        status: 'none'
+                    }, { transaction });
+                }
+            }
+        } catch (error) {
+            console.error('Error handling Getting relationships:', error);
+            throw error;
         }
     }
 }
