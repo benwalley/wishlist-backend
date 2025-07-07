@@ -1,4 +1,4 @@
-const { List, Group, ListItem, Getting, GoInOn, sequelize } = require('../models');
+const { List, Group, ListItem, Getting, GoInOn, ItemLink, sequelize } = require('../models');
 const { Op } = require('sequelize'); // Import Op from Sequelize
 
 
@@ -182,14 +182,18 @@ class ListService {
                     {
                         model: GoInOn,
                         as: 'goInOn'
+                    },
+                    {
+                        model: ItemLink,
+                        as: 'itemLinks'
                     }
                 ]
             });
 
             // Filter items based on visibility permissions
-            const ListItemService = require('./listItemService');
+            const PermissionService = require('./permissionService');
             const listItems = allListItems.filter(item =>
-                ListItemService.canUserViewItem(item, userId, allowedToViewList)
+                PermissionService.canUserViewItem(item, userId, allowedToViewList)
             );
 
             return {

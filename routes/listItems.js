@@ -5,6 +5,7 @@ const passport = require("passport");
 const router = express.Router();
 
 router.post('/create',  passport.authenticate('jwt', { session: false }), listItemController.create);
+router.post('/bulk-create',  passport.authenticate('jwt', { session: false }), listItemController.bulkCreate);
 router.post('/bulk-add-to-list',  passport.authenticate('jwt', { session: false }), listItemController.bulkAddToList);
 router.get('/',  passport.authenticate('jwt', { session: false }), listItemController.getAll);
 router.get('/my-items',  passport.authenticate('jwt', { session: false }), listItemController.getMyItems);

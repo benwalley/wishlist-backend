@@ -1,5 +1,6 @@
 const ListItemService = require('../services/listItemService');
 const ListService = require('../services/listService');
+const PermissionService = require('../services/permissionService');
 const { ApiError } = require('../middleware/errorHandler');
 
 /**
@@ -10,8 +11,15 @@ const { ApiError } = require('../middleware/errorHandler');
  */
 exports.create = async (req, res, next) => {
     try {
-        // Get the authenticated user's ID from PassportJS
         const createdById = req.user.id;
+
+        // Check permissions if lists are provided
+        if (req.body.lists && Array.isArray(req.body.lists) && req.body.lists.length > 0) {
+            const permissionResult = await PermissionService.canUserAddToLists(createdById, req.body.lists);
+            if (!permissionResult.canAccess) {
+                PermissionService.throwPermissionError(permissionResult);
+            }
+        }
 
         // Merge the authenticated user's ID with the request body
         const data = {
@@ -44,7 +52,13 @@ exports.update = async (req, res, next) => {
         const updates = req.body;
         const userId = req.user.id;
 
-        const updatedItem = await ListItemService.updateItem(id, updates, userId);
+        // Check if user can modify this item
+        const permissionResult = await PermissionService.canUserModifyItem(userId, id);
+        if (!permissionResult.canAccess) {
+            PermissionService.throwPermissionError(permissionResult);
+        }
+
+        const updatedItem = await ListItemService.updateItem(id, updates);
         res.status(200).json({
             success: true,
             data: updatedItem
@@ -66,16 +80,10 @@ exports.delete = async (req, res, next) => {
         const { id } = req.params;
         const userId = req.user.id;
 
-        // First get the item to check ownership
-        const item = await ListItemService.getItemById(id);
-
-        // Check if the current user is the creator of the item
-        if (String(item.createdById) !== String(userId)) {
-            throw new ApiError('Unauthorized', {
-                status: 403,
-                errorType: 'UNAUTHORIZED',
-                publicMessage: 'You do not have permission to delete this list item'
-            });
+        // Check if user can modify this item
+        const permissionResult = await PermissionService.canUserModifyItem(userId, id);
+        if (!permissionResult.canAccess) {
+            PermissionService.throwPermissionError(permissionResult);
         }
 
         const deletedItem = await ListItemService.deleteItem(id);
@@ -135,6 +143,52 @@ exports.getById = async (req, res, next) => {
 };
 
 /**
+ * Bulk create multiple list items
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.bulkCreate = async (req, res, next) => {
+    try {
+        const { items, listIds } = req.body;
+        const createdById = req.user.id;
+
+        // Validate input
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Items array is required and must be non-empty'
+            });
+        }
+
+        if (listIds && !Array.isArray(listIds)) {
+            return res.status(400).json({
+                success: false,
+                message: 'List IDs must be an array'
+            });
+        }
+
+        // Check permissions if lists are provided
+        if (listIds && listIds.length > 0) {
+            const permissionResult = await PermissionService.canUserAddToLists(createdById, listIds);
+            if (!permissionResult.canAccess) {
+                PermissionService.throwPermissionError(permissionResult);
+            }
+        }
+
+        const result = await ListItemService.bulkCreateItems(items, listIds || [], createdById);
+
+        res.status(201).json({
+            success: true,
+            message: `Successfully created ${result.count} items${result.associatedWithLists ? ` and associated them with ${result.associatedWithLists.length} lists` : ''}`,
+            data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
  * Get all items for a user that are not in any list
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
@@ -182,7 +236,13 @@ exports.bulkAddToList = async (req, res, next) => {
 
         const userId = req.user.id;
 
-        const result = await ListItemService.bulkAddItemsToList(listId, itemIds, userId);
+        // Check if user can access this list
+        const permissionResult = await PermissionService.canUserAccessList(userId, listId);
+        if (!permissionResult.canAccess) {
+            PermissionService.throwPermissionError(permissionResult);
+        }
+
+        const result = await ListItemService.bulkAddItemsToList(listId, itemIds);
 
         res.status(200).json({
             success: true,

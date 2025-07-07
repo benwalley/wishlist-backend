@@ -1,9 +1,9 @@
-version: '3.8'
 services:
   app:
     build: .
     ports:
       - "3000:3000"
+      - "9229:9229"  # Debug port
     depends_on:
       db:
         condition: service_healthy
@@ -16,7 +16,12 @@ services:
       - DB_PORT=5432
     volumes:
       - .:/usr/src/app
-    command: ["sh", "-c", "./wait-for-it.sh db:5432 -- npm run dev"]
+    command: ["sh", "-c", "./wait-for-it.sh db:5432 -- npm run debug-dev"]
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    shm_size: 2gb
 
   db:
     image: postgres:13

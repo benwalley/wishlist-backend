@@ -1,3 +1,12 @@
+// Polyfill fetch for Node.js 16 compatibility
+if (!globalThis.fetch) {
+    const fetch = require('node-fetch');
+    globalThis.fetch = fetch;
+    globalThis.Headers = fetch.Headers;
+    globalThis.Request = fetch.Request;
+    globalThis.Response = fetch.Response;
+}
+
 const app = require('./app');
 const models = require('./models');
 const port = process.env.PORT || 3000;

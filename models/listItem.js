@@ -15,6 +15,12 @@ module.exports = (sequelize) => {
             this.hasMany(models.Seen, { foreignKey: 'itemId', as: 'seenBy' });
             this.hasMany(models.Comment, { foreignKey: 'itemId', as: 'comments' });
             this.hasMany(models.Money, { foreignKey: 'itemId', as: 'moneyTransactions' });
+            this.hasMany(models.ItemLink, { 
+                foreignKey: 'itemId', 
+                as: 'itemLinks',
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE'
+            });
         }
     }
 
@@ -43,10 +49,6 @@ module.exports = (sequelize) => {
         maxPrice: {
             type: DataTypes.DECIMAL(10, 2),
             allowNull: true, // Optional max price
-        },
-        links: {
-            type: DataTypes.ARRAY(DataTypes.STRING),
-            allowNull: true, // Optional link
         },
         notes: {
             type: DataTypes.TEXT, // Multi-line string
