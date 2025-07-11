@@ -128,9 +128,10 @@ class UserService {
      * Authenticate a user and return tokens
      * @param {string} email - User email
      * @param {string} password - User password
+     * @param {string} username - Optional username for subuser login
      * @returns {Promise<Object>} - JWT token and refresh token
      */
-    static async authenticateUser(email, password) {
+    static async authenticateUser(email, password, username = null) {
         if (!email || !password) {
             throw new ApiError('Email and password are required.', {
                 status: 400,
@@ -139,15 +140,34 @@ class UserService {
             });
         }
 
-        // Find the user by email - explicitly request the password field
-        const user = await User.findOne({
-            where: { email },
+        // Helper function to normalize names for comparison
+        const normalizeName = (name) => {
+            return name.toLowerCase().replace(/[^a-z]/g, '');
+        };
+
+        // Build where clause based on username parameter
+        let whereClause = { 
+            email,
+            isActive: true // Only check active users
+        };
+
+        // If username is provided and not empty, filter for subusers with matching names
+        if (username && username.trim() !== '') {
+            whereClause.parentId = { [Op.ne]: null }; // Only subusers (have parentId)
+        } else {
+            // If no username, only check parent users (no parentId)
+            whereClause.parentId = null;
+        }
+
+        // Find users with the email and appropriate parent status
+        const users = await User.findAll({
+            where: whereClause,
             attributes: {
                 include: ['password'] // Explicitly include password
             }
         });
 
-        if (!user) {
+        if (!users || users.length === 0) {
             throw new ApiError('Invalid email or password.', {
                 status: 401,
                 errorType: 'AUTHENTICATION_ERROR',
@@ -155,19 +175,34 @@ class UserService {
             });
         }
 
-        // Compare password - access raw value directly from the database
-        const passwordFromDB = user.getDataValue('password'); // Get raw value bypassing getter
+        // Try to authenticate with each user that has the same email
+        let authenticatedUser = null;
         
-        if (!passwordFromDB) {
-            throw new ApiError('User account requires password setup.', {
-                status: 401, 
-                errorType: 'AUTHENTICATION_ERROR',
-                publicMessage: 'This account requires password setup. Please use password reset.'
-            });
+        for (const user of users) {
+            const passwordFromDB = user.getDataValue('password'); // Get raw value bypassing getter
+            
+            // Skip users without passwords
+            if (!passwordFromDB) {
+                continue;
+            }
+            
+            // If username is provided, check if it matches the user's name (normalized)
+            if (username && username.trim() !== '') {
+                const normalizedUsername = normalizeName(username);
+                const normalizedUserName = normalizeName(user.name);
+                if (normalizedUsername !== normalizedUserName) {
+                    continue; // Skip this user if name doesn't match
+                }
+            }
+            
+            const isPasswordValid = await bcrypt.compare(password, passwordFromDB);
+            if (isPasswordValid) {
+                authenticatedUser = user;
+                break; // Found a matching user, stop checking
+            }
         }
-        
-        const isPasswordValid = await bcrypt.compare(password, passwordFromDB);
-        if (!isPasswordValid) {
+
+        if (!authenticatedUser) {
             throw new ApiError('Invalid email or password.', {
                 status: 401,
                 errorType: 'AUTHENTICATION_ERROR',
@@ -176,10 +211,10 @@ class UserService {
         }
 
         // Generate tokens
-        const tokens = await UserService.generateTokens(user.id, user.email);
+        const tokens = await UserService.generateTokens(authenticatedUser.id, authenticatedUser.email);
 
         // Convert Sequelize instance to plain object and exclude sensitive fields
-        const userSafe = user.get({ plain: true });
+        const userSafe = authenticatedUser.get({ plain: true });
         delete userSafe.password;
 
         return { user: userSafe, tokens };

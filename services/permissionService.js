@@ -59,7 +59,7 @@ class PermissionService {
     static async canUserModifyItem(userId, itemId) {
         try {
             const item = await ListItem.findByPk(itemId);
-            
+
             if (!item) {
                 return {
                     canAccess: false,
@@ -96,7 +96,7 @@ class PermissionService {
     static async canUserAccessList(userId, listId) {
         try {
             const list = await List.findByPk(listId);
-            
+
             if (!list) {
                 return {
                     canAccess: false,
@@ -153,6 +153,23 @@ class PermissionService {
         }
 
         return false;
+    }
+
+    /**
+     * Check if a user can see items marked as "gotten"
+     * Users cannot see gotten status on items they own (to prevent spoilers)
+     * @param {Object} item - The list item to check
+     * @param {number|string} userId - The ID of the user
+     * @returns {boolean} - True if the user can see gotten status, false otherwise
+     */
+    static canUserSeeGotten(item, userId) {
+        // If the current user owns the item, they cannot see gotten status (prevents spoilers)
+        if (String(item.createdById) === String(userId)) {
+            return false;
+        }
+
+        // Otherwise, they can see gotten status
+        return true;
     }
 
     /**

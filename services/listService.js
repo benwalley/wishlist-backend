@@ -462,8 +462,17 @@ class ListService {
                 }
             });
 
+            // Filter lists where the list owner is a member of the group
+            const filteredLists = sharedLists.filter(list => {
+                const listOwnerId = list.ownerId;
+                const isMember = group.members && group.members.includes(listOwnerId);
+                const isAdmin = group.adminIds && group.adminIds.includes(listOwnerId);
+                const isOwner = group.ownerId === listOwnerId;
+                return isMember || isAdmin || isOwner;
+            });
+
             // Add number of non-deleted items for each list
-            const listsWithCount = await Promise.all(sharedLists.map(async (list) => {
+            const listsWithCount = await Promise.all(filteredLists.map(async (list) => {
                 const itemCount = await ListItem.count({
                     where: {
                         deleted: false

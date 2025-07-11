@@ -106,14 +106,24 @@ exports.delete = async (req, res, next) => {
 exports.getAll = async (req, res, next) => {
     try {
         const filter = req.query; // Use query params for filtering
-
-        // You could add user-specific filtering here
-        // e.g., filter.userId = req.user.id;
+        const userId = req.user.id;
 
         const items = await ListItemService.getAllItems(filter);
+        
+        // Filter gotten/goInOn data based on permissions
+        const filteredItems = items.map(item => {
+            const canSeeGotten = PermissionService.canUserSeeGotten(item, userId);
+            if (!canSeeGotten) {
+                // Remove gotten and goInOn data if user can't see it
+                const { getting, goInOn, ...filteredItem } = item.toJSON();
+                return filteredItem;
+            }
+            return item;
+        });
+
         res.status(200).json({
             success: true,
-            data: items
+            data: filteredItems
         });
     } catch (error) {
         // Let the error middleware handle it
@@ -130,11 +140,20 @@ exports.getAll = async (req, res, next) => {
 exports.getById = async (req, res, next) => {
     try {
         const { id } = req.params;
+        const userId = req.user.id;
         const item = await ListItemService.getItemById(id);
+
+        // Filter gotten/goInOn data based on permissions
+        const canSeeGotten = PermissionService.canUserSeeGotten(item, userId);
+        let responseItem = item;
+        if (!canSeeGotten) {
+            const { getting, goInOn, ...filteredItem } = item.toJSON();
+            responseItem = filteredItem;
+        }
 
         res.status(200).json({
             success: true,
-            data: item
+            data: responseItem
         });
     } catch (error) {
         // Let the error middleware handle it
@@ -210,6 +229,350 @@ exports.getNotInList = async (req, res, next) => {
 };
 
 /**
+ * Bulk delete items (soft delete - sets deleted: true)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.bulkDelete = async (req, res, next) => {
+    try {
+        const { itemIds } = req.body;
+        const userId = req.user.id;
+
+        // Validate input
+        if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Item IDs array is required and must be non-empty'
+            });
+        }
+
+        // Get all items and validate ownership
+        const ListItem = require('../models').ListItem;
+        const items = await ListItem.findAll({
+            where: {
+                id: { [require('sequelize').Op.in]: itemIds },
+                deleted: false
+            }
+        });
+
+        if (items.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No valid items found'
+            });
+        }
+
+        // Check that user is the creator of all items
+        const unauthorizedItems = items.filter(item => item.createdById !== userId);
+        if (unauthorizedItems.length > 0) {
+            const unauthorizedIds = unauthorizedItems.map(item => item.id);
+            return res.status(403).json({
+                success: false,
+                message: `You do not have permission to delete items: ${unauthorizedIds.join(', ')}`
+            });
+        }
+
+        // Soft delete all items (set deleted: true)
+        const updatedCount = await ListItem.update(
+            { deleted: true },
+            {
+                where: {
+                    id: { [require('sequelize').Op.in]: itemIds },
+                    createdById: userId,
+                    deleted: false
+                }
+            }
+        );
+
+        res.status(200).json({
+            success: true,
+            message: `Successfully deleted ${updatedCount[0]} items`,
+            deletedCount: updatedCount[0],
+            requestedIds: itemIds
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Update deleteOnDate for multiple items
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.updateDeleteDate = async (req, res, next) => {
+    try {
+        const { itemIds, deleteOnDate } = req.body;
+        const userId = req.user.id;
+
+        // Validate input
+        if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Item IDs array is required and must be non-empty'
+            });
+        }
+
+        // Validate deleteOnDate (can be null or a valid date)
+        if (deleteOnDate !== null && deleteOnDate !== undefined && isNaN(Date.parse(deleteOnDate))) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid date format for deleteOnDate'
+            });
+        }
+
+        // Get all items and validate ownership
+        const ListItem = require('../models').ListItem;
+        const items = await ListItem.findAll({
+            where: {
+                id: { [require('sequelize').Op.in]: itemIds },
+                deleted: false
+            }
+        });
+
+        if (items.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No valid items found'
+            });
+        }
+
+        // Check that user is the creator of all items
+        const unauthorizedItems = items.filter(item => item.createdById !== userId);
+        if (unauthorizedItems.length > 0) {
+            const unauthorizedIds = unauthorizedItems.map(item => item.id);
+            return res.status(403).json({
+                success: false,
+                message: `You do not have permission to update items: ${unauthorizedIds.join(', ')}`
+            });
+        }
+
+        // Update deleteOnDate for all items
+        const updatedCount = await ListItem.update(
+            { deleteOnDate: deleteOnDate },
+            {
+                where: {
+                    id: { [require('sequelize').Op.in]: itemIds },
+                    createdById: userId,
+                    deleted: false
+                }
+            }
+        );
+
+        res.status(200).json({
+            success: true,
+            message: `Successfully updated deleteOnDate for ${updatedCount[0]} items`,
+            updatedCount: updatedCount[0],
+            deleteOnDate: deleteOnDate,
+            requestedIds: itemIds
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Bulk update visibility settings for multiple items
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.updateVisibility = async (req, res, next) => {
+    try {
+        const { itemIds, visibleToGroups, visibleToUsers } = req.body;
+        const userId = req.user.id;
+
+        // Validate input
+        if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Item IDs array is required and must be non-empty'
+            });
+        }
+
+        // Validate visibility arrays (can be null, undefined, or arrays)
+        if (visibleToGroups !== null && visibleToGroups !== undefined && !Array.isArray(visibleToGroups)) {
+            return res.status(400).json({
+                success: false,
+                message: 'visibleToGroups must be an array or null'
+            });
+        }
+
+        if (visibleToUsers !== null && visibleToUsers !== undefined && !Array.isArray(visibleToUsers)) {
+            return res.status(400).json({
+                success: false,
+                message: 'visibleToUsers must be an array or null'
+            });
+        }
+
+        // At least one visibility field must be provided
+        if (visibleToGroups === undefined && visibleToUsers === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: 'At least one visibility field (visibleToGroups or visibleToUsers) must be provided'
+            });
+        }
+
+        // Get all items and validate ownership
+        const ListItem = require('../models').ListItem;
+        const items = await ListItem.findAll({
+            where: {
+                id: { [require('sequelize').Op.in]: itemIds },
+                deleted: false
+            }
+        });
+
+        if (items.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No valid items found'
+            });
+        }
+
+        // Check that user is the creator of all items
+        const unauthorizedItems = items.filter(item => item.createdById !== userId);
+        if (unauthorizedItems.length > 0) {
+            const unauthorizedIds = unauthorizedItems.map(item => item.id);
+            return res.status(403).json({
+                success: false,
+                message: `You do not have permission to update items: ${unauthorizedIds.join(', ')}`
+            });
+        }
+
+        // Build update object with only provided fields
+        const updateData = {};
+        if (visibleToGroups !== undefined) {
+            updateData.visibleToGroups = visibleToGroups;
+        }
+        if (visibleToUsers !== undefined) {
+            updateData.visibleToUsers = visibleToUsers;
+        }
+
+        // Update visibility for all items
+        const updatedCount = await ListItem.update(
+            updateData,
+            {
+                where: {
+                    id: { [require('sequelize').Op.in]: itemIds },
+                    createdById: userId,
+                    deleted: false
+                }
+            }
+        );
+
+        res.status(200).json({
+            success: true,
+            message: `Successfully updated visibility for ${updatedCount[0]} items`,
+            updatedCount: updatedCount[0],
+            visibilityUpdate: updateData,
+            requestedIds: itemIds
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Bulk update list assignments for multiple items
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.updateLists = async (req, res, next) => {
+    try {
+        const { itemIds, lists } = req.body;
+        const userId = req.user.id;
+
+        // Validate input
+        if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Item IDs array is required and must be non-empty'
+            });
+        }
+
+        // Validate lists array (can be empty array or array of numbers)
+        if (!Array.isArray(lists)) {
+            return res.status(400).json({
+                success: false,
+                message: 'lists must be an array'
+            });
+        }
+
+        // Validate that all list IDs are numbers
+        const invalidListIds = lists.filter(id => typeof id !== 'number' || !Number.isInteger(id));
+        if (invalidListIds.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'All list IDs must be integers'
+            });
+        }
+
+        // Get all items and validate ownership
+        const ListItem = require('../models').ListItem;
+        const items = await ListItem.findAll({
+            where: {
+                id: { [require('sequelize').Op.in]: itemIds },
+                deleted: false
+            }
+        });
+
+        if (items.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No valid items found'
+            });
+        }
+
+        // Check that user is the creator of all items
+        const unauthorizedItems = items.filter(item => item.createdById !== userId);
+        if (unauthorizedItems.length > 0) {
+            const unauthorizedIds = unauthorizedItems.map(item => item.id);
+            return res.status(403).json({
+                success: false,
+                message: `You do not have permission to update items: ${unauthorizedIds.join(', ')}`
+            });
+        }
+
+        // If lists are provided, validate user has permission to add to those lists
+        if (lists.length > 0) {
+            const PermissionService = require('../services/permissionService');
+            const permissionResult = await PermissionService.canUserAddToLists(userId, lists);
+            if (!permissionResult.canAccess) {
+                return res.status(403).json({
+                    success: false,
+                    message: `You do not have permission to add items to some of the specified lists`
+                });
+            }
+        }
+
+        // Update lists for all items
+        const updatedCount = await ListItem.update(
+            { lists: lists },
+            {
+                where: {
+                    id: { [require('sequelize').Op.in]: itemIds },
+                    createdById: userId,
+                    deleted: false
+                }
+            }
+        );
+
+        res.status(200).json({
+            success: true,
+            message: `Successfully updated list assignments for ${updatedCount[0]} items`,
+            updatedCount: updatedCount[0],
+            lists: lists,
+            requestedIds: itemIds
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
  * Bulk add items to a list
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
@@ -271,6 +634,69 @@ exports.getMyItems = async (req, res, next) => {
         });
     } catch (error) {
         // Let the error middleware handle it
+        next(error);
+    }
+};
+
+/**
+ * Bulk update publicity and priority for multiple items
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.bulkUpdatePublicityPriority = async (req, res, next) => {
+    try {
+        const { items } = req.body;
+        const userId = req.user.id;
+
+        // Validate input
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Items array is required and must be non-empty'
+            });
+        }
+
+        // Validate each item has required fields
+        for (const item of items) {
+            if (!item.id || typeof item.id !== 'number') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Each item must have a valid numeric id'
+                });
+            }
+
+            if (item.hasOwnProperty('isPublic') && typeof item.isPublic !== 'boolean') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'isPublic must be a boolean value'
+                });
+            }
+
+            if (item.hasOwnProperty('priority') && typeof item.priority !== 'number') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'priority must be a number'
+                });
+            }
+
+            // At least one field must be provided
+            if (!item.hasOwnProperty('isPublic') && !item.hasOwnProperty('priority')) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Each item must have at least one field to update (isPublic or priority)'
+                });
+            }
+        }
+
+        const result = await ListItemService.bulkUpdatePublicityPriority(userId, items);
+
+        res.status(200).json({
+            success: true,
+            message: `Successfully updated ${result.updatedCount} items`,
+            data: result
+        });
+    } catch (error) {
         next(error);
     }
 };

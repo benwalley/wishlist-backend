@@ -7,7 +7,7 @@ class GeminiAIService {
         this.model = process.env.GEMINI_MODEL || 'gemini-pro';
         this.genAI = null;
         this.modelInstance = null;
-        
+
         if (!this.apiKey) {
             console.warn('GEMINI_API_KEY not found in environment variables. AI service will not be available.');
         } else {
@@ -47,7 +47,7 @@ class GeminiAIService {
         }
 
         const startTime = Date.now();
-        
+
         try {
             // Set default options
             const defaultOptions = {
@@ -56,9 +56,9 @@ class GeminiAIService {
                 topP: 0.95,
                 topK: 64
             };
-            
+
             const mergedOptions = { ...defaultOptions, ...options };
-            
+
             // Generate content
             const result = await this.modelInstance.generateContent({
                 contents: [{
@@ -74,11 +74,11 @@ class GeminiAIService {
             });
 
             const response = await result.response;
-            
+
             // Debug logging for troubleshooting
             console.log('[GEMINI-AI] Response candidates:', response.candidates?.length || 0);
             console.log('[GEMINI-AI] Response usage:', response.usageMetadata);
-            
+
             // Check if response was blocked by safety filters
             if (response.candidates && response.candidates.length > 0) {
                 const candidate = response.candidates[0];
@@ -97,9 +97,9 @@ class GeminiAIService {
                     });
                 }
             }
-            
+
             const text = response.text();
-            
+
             if (!text || text.trim().length === 0) {
                 // Additional debug info for empty responses
                 console.error('[GEMINI-AI] Empty response details:', {
@@ -107,7 +107,7 @@ class GeminiAIService {
                     finishReason: response.candidates?.[0]?.finishReason,
                     safetyRatings: response.candidates?.[0]?.safetyRatings
                 });
-                
+
                 throw new ApiError('Empty response from AI service', {
                     status: 500,
                     errorType: 'EMPTY_AI_RESPONSE',
@@ -124,8 +124,8 @@ class GeminiAIService {
 
             // Get token usage if available
             const usageMetadata = response.usageMetadata;
-            const tokensUsed = usageMetadata ? 
-                (usageMetadata.promptTokenCount + usageMetadata.candidatesTokenCount) : 
+            const tokensUsed = usageMetadata ?
+                (usageMetadata.promptTokenCount + usageMetadata.candidatesTokenCount) :
                 null;
 
             return {
@@ -143,9 +143,9 @@ class GeminiAIService {
         } catch (error) {
             const endTime = Date.now();
             const responseTimeMs = endTime - startTime;
-            
+
             console.error('Error generating AI response:', error);
-            
+
             // Handle specific Google AI errors
             if (error.message?.includes('API_KEY_INVALID')) {
                 throw new ApiError('Invalid API key', {
@@ -154,7 +154,7 @@ class GeminiAIService {
                     publicMessage: 'AI service authentication failed'
                 });
             }
-            
+
             if (error.message?.includes('QUOTA_EXCEEDED') || error.message?.includes('rate limit')) {
                 throw new ApiError('Rate limit exceeded', {
                     status: 429,
@@ -162,7 +162,7 @@ class GeminiAIService {
                     publicMessage: 'AI service is temporarily unavailable due to high demand. Please try again later.'
                 });
             }
-            
+
             if (error.message?.includes('SAFETY')) {
                 throw new ApiError('Content filtered', {
                     status: 400,
@@ -170,11 +170,11 @@ class GeminiAIService {
                     publicMessage: 'The content was filtered due to safety policies. Please modify your query.'
                 });
             }
-            
+
             if (error instanceof ApiError) {
                 throw error;
             }
-            
+
             // Generic error for unexpected issues
             throw new ApiError('AI service error', {
                 status: 500,
@@ -198,6 +198,84 @@ class GeminiAIService {
             initialized: !!(this.genAI && this.modelInstance),
             model: this.model
         };
+    }
+
+    async parseItemData(htmlContent) {
+        if (!htmlContent || typeof htmlContent !== 'string' || htmlContent.trim().length === 0) {
+            throw new ApiError('Invalid HTML content', {
+                status: 400,
+                errorType: 'INVALID_HTML',
+                publicMessage: 'HTML content is required and must be a non-empty string'
+            });
+        }
+
+        // Truncate HTML content if too long (Gemini has token limits)
+        const maxHtmlLength = 500000;
+        const truncatedHtml = htmlContent.length > maxHtmlLength ?
+            htmlContent.substring(0, maxHtmlLength) + '...' :
+            htmlContent;
+
+        const prompt = `
+Please analyze this HTML content and extract the following product/item information:
+- name: The product or item name/title
+- price: The price (include currency symbol if found, or null if not found)
+- imageUrl: The main product image URL (full URL, or null if not found)
+- linkLabel: A short label identifying the website/store (e.g., "Amazon", "eBay", "Walmart", "Target", etc.)
+
+Return the response as a JSON object with exactly these fields: name, price, imageUrl, linkLabel.
+If any field cannot be determined, use null for that field.
+
+HTML Content:
+${truncatedHtml}
+
+Return only the JSON object, no additional text or explanation.`;
+
+        try {
+            const result = await this.generateResponse(prompt, {
+                maxTokens: 50000,
+                temperature: 0.1 // Lower temperature for more consistent JSON output
+            });
+
+            // Parse the JSON response
+            let parsedData;
+            try {
+                // Clean the response to extract JSON
+                const cleanResponse = result.response.trim();
+                const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
+                const jsonString = jsonMatch ? jsonMatch[0] : cleanResponse;
+
+                parsedData = JSON.parse(jsonString);
+            } catch (parseError) {
+                console.error('Failed to parse JSON response:', result.response);
+                throw new ApiError('Invalid JSON response from AI service', {
+                    status: 500,
+                    errorType: 'JSON_PARSE_ERROR',
+                    publicMessage: 'Failed to parse item data from AI response'
+                });
+            }
+
+            // Validate required fields exist
+            const validatedData = {
+                name: parsedData.name || null,
+                price: parsedData.price || null,
+                imageUrl: parsedData.imageUrl || null,
+                linkLabel: parsedData.linkLabel || null
+            };
+
+            console.log('Successfully parsed item data:', validatedData);
+            return validatedData;
+
+        } catch (error) {
+            console.error('Error parsing item data:', error);
+            if (error instanceof ApiError) {
+                throw error;
+            }
+            throw new ApiError('Failed to parse item data', {
+                status: 500,
+                errorType: 'ITEM_PARSE_ERROR',
+                publicMessage: 'Failed to extract item data from page content'
+            });
+        }
     }
 }
 

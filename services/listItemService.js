@@ -152,6 +152,14 @@ class ListItemService {
                 where: filter,
                 include: [
                     {
+                        model: Getting,
+                        as: 'getting'
+                    },
+                    {
+                        model: GoInOn,
+                        as: 'goInOn'
+                    },
+                    {
                         model: ItemLink,
                         as: 'itemLinks'
                     }
@@ -433,6 +441,105 @@ class ListItemService {
                 status: 500,
                 errorType: 'DATABASE_ERROR',
                 publicMessage: 'Unable to add items to the list. Please try again.'
+            });
+        }
+    }
+
+    // Bulk update publicity and priority for multiple items
+    static async bulkUpdatePublicityPriority(userId, itemUpdates) {
+        const transaction = await sequelize.transaction();
+        try {
+            // Get all item IDs from the updates
+            const itemIds = itemUpdates.map(item => item.id);
+
+            // Get all items and validate ownership
+            const items = await ListItem.findAll({
+                where: {
+                    id: {
+                        [Op.in]: itemIds
+                    },
+                    deleted: false
+                },
+                transaction
+            });
+
+            if (items.length === 0) {
+                throw new ApiError('No valid items found', {
+                    status: 404,
+                    errorType: 'NOT_FOUND',
+                    publicMessage: 'No valid items were found to update'
+                });
+            }
+
+            // Check that user is the creator of all items
+            const unauthorizedItems = items.filter(item => item.createdById !== userId);
+            if (unauthorizedItems.length > 0) {
+                const unauthorizedIds = unauthorizedItems.map(item => item.id);
+                throw new ApiError(`You do not have permission to update items: ${unauthorizedIds.join(', ')}`, {
+                    status: 403,
+                    errorType: 'UNAUTHORIZED',
+                    publicMessage: 'You do not have permission to update some of the specified items'
+                });
+            }
+
+            // Track results
+            const results = {
+                success: true,
+                updatedItems: [],
+                failedItems: [],
+                updatedCount: 0
+            };
+
+            // Update each item with its specific changes
+            for (const updateItem of itemUpdates) {
+                try {
+                    // Find the corresponding item
+                    const item = items.find(i => i.id === updateItem.id);
+                    if (!item) {
+                        results.failedItems.push({
+                            id: updateItem.id,
+                            reason: 'Item not found'
+                        });
+                        continue;
+                    }
+
+                    // Build update object with only provided fields
+                    const updateData = {};
+                    if (updateItem.hasOwnProperty('isPublic')) {
+                        updateData.isPublic = updateItem.isPublic;
+                    }
+                    if (updateItem.hasOwnProperty('priority')) {
+                        updateData.priority = updateItem.priority;
+                    }
+
+                    // Update the item
+                    await item.update(updateData, { transaction });
+
+                    results.updatedItems.push({
+                        id: updateItem.id,
+                        updated: updateData
+                    });
+                    results.updatedCount++;
+                } catch (error) {
+                    console.error(`Error updating item ${updateItem.id}:`, error);
+                    results.failedItems.push({
+                        id: updateItem.id,
+                        reason: 'Database error while updating item'
+                    });
+                }
+            }
+
+            await transaction.commit();
+            return results;
+        } catch (error) {
+            await transaction.rollback();
+            console.error('Error in bulkUpdatePublicityPriority:', error);
+            if (error instanceof ApiError) throw error;
+
+            throw new ApiError('Failed to bulk update publicity and priority', {
+                status: 500,
+                errorType: 'DATABASE_ERROR',
+                publicMessage: 'Unable to update the items. Please try again.'
             });
         }
     }

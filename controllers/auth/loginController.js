@@ -2,7 +2,7 @@ const UserService = require('../../services/UserService');
 
 exports.login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, username } = req.body;
 
         // Validate input
         if (!email || !password) {
@@ -13,7 +13,7 @@ exports.login = async (req, res) => {
         }
 
         // Authenticate user and generate tokens
-        const { user, tokens } = await UserService.authenticateUser(email, password);
+        const { user, tokens } = await UserService.authenticateUser(email, password, username);
 
         // Respond with tokens and user info
         res.status(200).json({
