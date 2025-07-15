@@ -359,7 +359,77 @@ class GroupService {
             throw new Error('Access denied. You must be an owner, admin, member, or invitee of this group.');
         }
 
-        return { group, access };
+        // Filter out inactive users from member arrays
+        const filteredGroup = await this.filterInactiveUsers(group);
+
+        return { group: filteredGroup, access };
+    }
+
+    /**
+     * Filter out inactive users from group member arrays
+     * @param {Object} group - The group object
+     * @returns {Promise<Object>} Group object with only active users in member arrays
+     */
+    static async filterInactiveUsers(group) {
+        try {
+            // Get all unique user IDs from the group
+            const allUserIds = new Set();
+            
+            if (group.ownerId) allUserIds.add(group.ownerId);
+            if (Array.isArray(group.members)) {
+                group.members.forEach(id => allUserIds.add(id));
+            }
+            if (Array.isArray(group.adminIds)) {
+                group.adminIds.forEach(id => allUserIds.add(id));
+            }
+            if (Array.isArray(group.invitedIds)) {
+                group.invitedIds.forEach(id => allUserIds.add(id));
+            }
+
+            if (allUserIds.size === 0) {
+                return group;
+            }
+
+            // Get active users
+            const activeUsers = await User.findAll({
+                where: {
+                    id: {
+                        [Op.in]: [...allUserIds]
+                    },
+                    isActive: true
+                },
+                attributes: ['id']
+            });
+
+            const activeUserIds = new Set(activeUsers.map(user => user.id));
+
+            // Create a copy of the group with filtered arrays
+            const filteredGroup = { ...group.toJSON() };
+
+            // Filter members array
+            if (Array.isArray(filteredGroup.members)) {
+                filteredGroup.members = filteredGroup.members.filter(id => activeUserIds.has(id));
+            }
+
+            // Filter adminIds array
+            if (Array.isArray(filteredGroup.adminIds)) {
+                filteredGroup.adminIds = filteredGroup.adminIds.filter(id => activeUserIds.has(id));
+            }
+
+            // Filter invitedIds array
+            if (Array.isArray(filteredGroup.invitedIds)) {
+                filteredGroup.invitedIds = filteredGroup.invitedIds.filter(id => activeUserIds.has(id));
+            }
+
+            // Note: We don't filter the ownerId as the owner should always be included
+            // even if inactive (business decision)
+
+            return filteredGroup;
+        } catch (error) {
+            console.error('Error filtering inactive users:', error);
+            // Return original group if filtering fails
+            return group;
+        }
     }
 
     /**

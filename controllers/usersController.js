@@ -570,6 +570,54 @@ exports.createSubuser = async (req, res, next) => {
 };
 
 /**
+ * Save a note for the current authenticated user
+ */
+exports.saveNote = async (req, res, next) => {
+    try {
+        const { notes } = req.body;
+        
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'User not authenticated.'
+            });
+        }
+
+        if (notes === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: 'Notes field is required.'
+            });
+        }
+
+        // Find the current user
+        const user = await models.User.findByPk(req.user.id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found.'
+            });
+        }
+
+        // Update the notes field
+        user.notes = notes;
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Note saved successfully.',
+            notes: user.notes
+        });
+    } catch (error) {
+        console.error('Error saving note:', error);
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while saving the note.'
+        });
+    }
+};
+
+/**
  * Alias for getPublicUsers - used for the root /users endpoint
  */
 exports.getUserData = exports.getPublicUsers;

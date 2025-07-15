@@ -6,19 +6,20 @@
   <component name="ChangeListManager">
     <list default="true" id="ac633e9b-c999-467f-b1d6-59c1a67c9c75" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0/storage_v2/_src_/database/wishlist.xbVDxg/schema/public.abK9xQ.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0/storage_v2/_src_/database/wishlist.xbVDxg/schema/public.abK9xQ.meta" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/auth/loginController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/auth/loginController.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/controllers/listItemController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/listItemController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/lists/getMineController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/lists/getMineController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/qaController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/qaController.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/controllers/usersController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/usersController.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/user.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/user.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/auth/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/auth/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/money.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/money.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/routes/listItems.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/listItems.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/routes/users.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/users.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/services/UserService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/UserService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/geminiAIService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/geminiAIService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/groupService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/groupService.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/services/listItemService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listItemService.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/services/listService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/permissionService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/permissionService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/qaService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/qaService.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -166,7 +167,8 @@
       <workItem from="1751500545095" duration="2164000" />
       <workItem from="1751590653590" duration="29331000" />
       <workItem from="1751937847627" duration="21472000" />
-      <workItem from="1752189206308" duration="3295000" />
+      <workItem from="1752189206308" duration="31177000" />
+      <workItem from="1752541397608" duration="3559000" />
     </task>
     <servers />
   </component>

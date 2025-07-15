@@ -1,5 +1,6 @@
 const { List, Group, ListItem, Getting, GoInOn, ItemLink, sequelize } = require('../models');
 const { Op } = require('sequelize'); // Import Op from Sequelize
+const ItemViewService = require('./itemViewService');
 
 
 class ListService {
@@ -187,7 +188,8 @@ class ListService {
                         model: ItemLink,
                         as: 'itemLinks'
                     }
-                ]
+                ],
+                order: [['createdAt', 'DESC']]
             });
 
             // Filter items based on visibility permissions
@@ -234,7 +236,23 @@ class ListService {
             const lists = await List.findAll({
                 where: { ownerId: String(ownerId) }, // Ensure ownerId is cast to a string
             });
-            return lists;
+
+            // Add number of non-deleted items for each list
+            const listsWithCount = await Promise.all(lists.map(async (list) => {
+                const itemCount = await ListItem.count({
+                    where: {
+                        lists: { [Op.contains]: [list.id] },
+                        deleted: false
+                    }
+                });
+
+                return {
+                    ...list.toJSON(),
+                    numberItems: itemCount
+                };
+            }));
+
+            return listsWithCount;
         } catch (error) {
             throw error;
         }
@@ -265,7 +283,8 @@ class ListService {
                     createdById: userId,
                     deleted: false
                 },
-                raw: true
+                raw: true,
+                order: [['createdAt', 'DESC']]
             });
 
             if (userItems.length === 0) {
@@ -598,8 +617,10 @@ class ListService {
      */
     async getAllAccessibleLists(userId) {
         try {
-            // 1. Get lists the user owns (including orphaned items list)
-            const ownedListsResult = await this.getAllListsWithOrphaned(userId);
+            // 1. Get lists the user owns (without orphaned items list)
+            const ownedLists = await List.findAll({
+                where: { ownerId: String(userId) },
+            });
 
             // 2. Get lists shared directly with the user
             const sharedDirectlyLists = await List.findAll({
@@ -633,7 +654,7 @@ class ListService {
             });
 
             // 5. Combine all lists, removing duplicates
-            const allLists = [...ownedListsResult];
+            const allLists = [...ownedLists];
 
             // Add shared directly lists if not already included
             sharedDirectlyLists.forEach(list => {
@@ -649,32 +670,21 @@ class ListService {
                 }
             });
 
-            // Add number of non-deleted items for each list (for lists that don't already have this property)
+            // Add number of non-deleted items and unviewed items count for each list
             const listsWithCount = await Promise.all(allLists.map(async (list) => {
-                // Skip if list already has numberItems property
-                if (list.numberItems !== undefined) {
-                    return list;
-                }
-
                 const itemCount = await ListItem.count({
                     where: {
+                        lists: { [Op.contains]: [list.id] },
                         deleted: false
-                    },
-                    include: [{
-                        model: List,
-                        as: 'associatedLists',
-                        where: {
-                            id: list.id
-                        },
-                        through: {
-                            attributes: []
-                        }
-                    }]
+                    }
                 });
 
+                const unviewedItemsCount = await ItemViewService.getUnviewedItemsCountForList(userId, list.id);
+
                 return {
-                    ...(list.toJSON ? list.toJSON() : list),
-                    numberItems: itemCount
+                    ...list.toJSON(),
+                    numberItems: itemCount,
+                    unviewedItemsCount: unviewedItemsCount
                 };
             }));
 

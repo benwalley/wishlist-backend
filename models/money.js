@@ -9,8 +9,7 @@ module.exports = (sequelize) => {
          * The `models/index` file will call this method automatically.
          */
         static associate(models) {
-            // Define relationships
-            this.belongsTo(models.ListItem, { foreignKey: 'itemId', as: 'item' });
+            // No associations - completely self contained
         }
     }
 
@@ -47,19 +46,21 @@ module.exports = (sequelize) => {
             type: DataTypes.DECIMAL(10, 2), // Stores money values with precision
             allowNull: false, // Required field
         },
+        completed: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false, // Defaults to false (not completed)
+        },
+        completedAt: {
+            type: DataTypes.DATE,
+            allowNull: true, // Nullable until transaction is completed
+            defaultValue: null,
+        },
     }, {
         sequelize,
         modelName: 'Money',
         tableName: 'money', // Explicitly specify the lowercase table name
         timestamps: true, // Ensures createdAt and updatedAt columns are automatically managed
-        validate: {
-            // Custom validation to ensure either owedFrom or owedTo is provided
-            owedFromOrTo() {
-                if (!this.owedFromId && !this.owedFromName && !this.owedToId && !this.owedToName) {
-                    throw new Error('At least one of owedFromId, owedFromName, owedToId, or owedToName must be provided.');
-                }
-            },
-        },
     });
 
     return Money;

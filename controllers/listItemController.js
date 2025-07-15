@@ -109,7 +109,7 @@ exports.getAll = async (req, res, next) => {
         const userId = req.user.id;
 
         const items = await ListItemService.getAllItems(filter);
-        
+
         // Filter gotten/goInOn data based on permissions
         const filteredItems = items.map(item => {
             const canSeeGotten = PermissionService.canUserSeeGotten(item, userId);
@@ -631,6 +631,45 @@ exports.getMyItems = async (req, res, next) => {
         res.status(200).json({
             success: true,
             data: items
+        });
+    } catch (error) {
+        // Let the error middleware handle it
+        next(error);
+    }
+};
+
+/**
+ * Search for list items that the user has access to based on a query
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.searchAccessibleItems = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { query } = req.params;
+
+        if (!query || query.trim().length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Search query is required and cannot be empty'
+            });
+        }
+
+        if (query.trim().length < 2) {
+            return res.status(400).json({
+                success: false,
+                message: 'Search query must be at least 2 characters long'
+            });
+        }
+
+        const results = await ListItemService.searchAccessibleItems(userId, query.trim());
+
+        res.status(200).json({
+            success: true,
+            data: results,
+            query: query.trim(),
+            count: results.length
         });
     } catch (error) {
         // Let the error middleware handle it

@@ -281,6 +281,41 @@ class QAService {
         }
     }
 
+    // Get all questions accessible to a user (asked by them + shared with them + shared with their groups)
+    static async getAccessibleQAsByUserId(userId, userGroupIds = []) {
+        try {
+            // Convert userId to a number if it's a string
+            const userIdNum = parseInt(userId, 10);
+
+            const qasWithAnswers = await Question.findAll({
+                where: {
+                    [Op.or]: [
+                        // Questions asked by the user
+                        { askedById: userIdNum },
+                        
+                        // Questions where user is directly shared
+                        Sequelize.literal(`${userIdNum} = ANY("Question"."sharedWithUserIds")`),
+
+                        // Questions where any of user's groups are shared
+                        ...(userGroupIds.length > 0 ? [
+                            Sequelize.literal(`"Question"."sharedWithGroupIds" && ARRAY[${userGroupIds.join(',')}]::integer[]`)
+                        ] : [])
+                    ]
+                },
+                include: [{
+                    model: Answer,
+                    as: 'answers'
+                }],
+                order: [['createdAt', 'DESC']]
+            });
+
+            return qasWithAnswers;
+        } catch (error) {
+            console.error('Error fetching accessible QAs by user ID:', error);
+            throw error;
+        }
+    }
+
 
     // Update a QA by ID
     static async updateQuestion(id, updates) {

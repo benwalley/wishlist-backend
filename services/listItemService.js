@@ -119,7 +119,8 @@ class ListItemService {
                         model: ItemLink,
                         as: 'itemLinks'
                     }
-                ]
+                ],
+                order: [['createdAt', 'DESC']]
             });
 
             // Get the actual lists from the created items for response
@@ -163,7 +164,8 @@ class ListItemService {
                         model: ItemLink,
                         as: 'itemLinks'
                     }
-                ]
+                ],
+                order: [['createdAt', 'DESC']]
             });
             return items;
         } catch (error) {
@@ -540,6 +542,60 @@ class ListItemService {
                 status: 500,
                 errorType: 'DATABASE_ERROR',
                 publicMessage: 'Unable to update the items. Please try again.'
+            });
+        }
+    }
+
+    // Search for list items that the user has access to based on a query
+    static async searchAccessibleItems(userId, query) {
+        try {
+            const PermissionService = require('./permissionService');
+
+            // Search items by name, notes, or description that match the query
+            const searchPattern = `%${query}%`;
+
+            const items = await ListItem.findAll({
+                where: {
+                    [Op.and]: [
+                        { deleted: false },
+                        {
+                            [Op.or]: [
+                                { name: { [Op.iLike]: searchPattern } },
+                            ]
+                        },
+                    ]
+                },
+                order: [['createdAt', 'DESC']]
+            });
+
+            const accessibleItems = [];
+
+            for (const item of items) {
+                const canView = PermissionService.canUserViewItem(item, userId, true);
+
+                if (canView) {
+                    // Filter gotten/goInOn data based on permissions
+                    const canSeeGotten = PermissionService.canUserSeeGotten(item, userId);
+
+                    if (!canSeeGotten) {
+                        // Remove sensitive data if user can't see it
+                        const { getting, goInOn, ...filteredItem } = item.toJSON();
+                        accessibleItems.push(filteredItem);
+                    } else {
+                        accessibleItems.push(item);
+                    }
+                }
+            }
+
+            return accessibleItems;
+        } catch (error) {
+            console.error('Error searching accessible items:', error);
+            if (error instanceof ApiError) throw error;
+
+            throw new ApiError('Failed to search list items', {
+                status: 500,
+                errorType: 'DATABASE_ERROR',
+                publicMessage: 'Unable to search list items. Please try again.'
             });
         }
     }

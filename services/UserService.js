@@ -439,10 +439,11 @@ class UserService {
         // Combine all IDs
         const allAccessibleIds = new Set([...groupMemberIds, ...familyUserIds]);
 
-        // Find all accessible users
+        // Find all accessible users (only active users)
         const accessibleUsers = await User.findAll({
             where: {
-                id: { [Op.in]: [...allAccessibleIds] }
+                id: { [Op.in]: [...allAccessibleIds] },
+                isActive: true
             },
             attributes: { exclude: ['password'] } // Don't return passwords
         });
