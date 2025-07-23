@@ -13,6 +13,8 @@ router.get('/', passport.authenticate('jwt', { session: false }), qaController.g
 
 router.get('/user/:userId', passport.authenticate('jwt', { session: false }), qaController.getByUserId);
 
+router.get('/accessible/:userId', passport.authenticate('jwt', { session: false }), qaController.getAccessible);
+
 router.get('/userAsked/:userId', passport.authenticate('jwt', { session: false }), qaController.getByAskerId);
 
 router.get('/:id', passport.authenticate('jwt', { session: false }), qaController.getById);

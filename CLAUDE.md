@@ -6,6 +6,12 @@
 - Start production: `npm start`
 - Database migrations: Use Sequelize CLI (e.g., `npx sequelize-cli migrate`, `npx sequelize-cli seed:all`)
 
+## Environment Variables & Deployment
+- **Local Development**: Use `.env` file (never commit this file)
+- **Production (Heroku)**: Set environment variables in Heroku dashboard or CLI
+- **Reference**: Use `.env.example` for required variables
+- **Setup**: Copy `.env.example` to `.env` and fill in your values
+
 ## Code Style & Conventions
 - **Architecture**: Controller → Service → Model pattern
 - **Error Handling**: Try/catch blocks with console.error and consistent error responses

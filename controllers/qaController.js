@@ -107,7 +107,7 @@ module.exports = {
             // Get user's groups from the database
             const { Group } = require('../models');
             const { Op } = require('sequelize');
-            
+
             const userGroups = await Group.findAll({
                 where: {
                     [Op.or]: [
@@ -128,6 +128,47 @@ module.exports = {
             });
         } catch (error) {
             console.error('Error fetching QAs by userId:', error);
+            return res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+    },
+
+    getAccessible: async (req, res) => {
+        try {
+            const { userId } = req.params;
+            if (!userId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'userId is required.'
+                });
+            }
+
+            // Get user's groups from the database
+            const { Group } = require('../models');
+            const { Op } = require('sequelize');
+
+            const userGroups = await Group.findAll({
+                where: {
+                    [Op.or]: [
+                        { members: { [Op.contains]: [String(userId)] } },
+                        { adminIds: { [Op.contains]: [String(userId)] } },
+                        { ownerId: String(userId) }
+                    ]
+                },
+                attributes: ['id']
+            });
+
+            const groupIds = userGroups.map(group => group.id);
+
+            const qas = await QAService.getAccessibleQAsByUserId(userId, groupIds);
+            return res.status(200).json({
+                success: true,
+                data: qas
+            });
+        } catch (error) {
+            console.error('Error fetching accessible QAs:', error);
             return res.status(400).json({
                 success: false,
                 message: error.message
@@ -163,7 +204,7 @@ module.exports = {
     updateQuestion: async (req, res) => {
         try {
             const { questionId } = req.params;
-            const data = req.body;
+            const { answerText, ...questionData } = req.body;
 
             // Check if the user is authenticated
             if (!req.user) {
@@ -181,23 +222,51 @@ module.exports = {
                 });
             }
 
-            // Check if the user owns this Question (authorization)
-            if (question.askedById !== req.user.id) {
+            // Handle answer operations based on answerText value
+            if (answerText !== undefined) {
+                if (answerText.trim() === '') {
+                    // Delete the user's answer if answerText is empty string
+                    await QAService.deleteUserAnswer(req.user.id, questionId);
+                } else {
+                    // Create or update the user's answer
+                    await QAService.createOrUpdateAnswer(answerText, req.user.id, questionId);
+                }
+            }
+            // Check if there are question updates (anything other than answerText)
+            const hasQuestionUpdates = Object.keys(questionData).length > 0;
+
+            // If there are question updates, check if user owns the question
+            if (hasQuestionUpdates && question.askedById !== req.user.id) {
                 return res.status(403).json({
-                    success: false,
+                    success: true,
+                    answerUpdated: true,
+                    questionUpdated: false,
                     message: 'Not authorized to update this question.'
                 });
             }
 
-            const updatedQuestion = await QAService.updateQuestion(questionId, data);
+            // Update question only if there are question updates and user is authorized
+            let updatedQuestion = question;
+            if (hasQuestionUpdates) {
+                updatedQuestion = await QAService.updateQuestion(questionId, questionData);
+            }
+
+
+            // Fetch the updated question with all answers
+            const questionWithAnswers = await QAService.getQAById(questionId);
+
             return res.status(200).json({
                 success: true,
-                data: updatedQuestion
+                answerUpdated: true,
+                questionUpdated: true,
+                data: questionWithAnswers
             });
         } catch (error) {
             console.error('Error updating question:', error);
             return res.status(400).json({
                 success: false,
+                answerUpdated: false,
+                questionUpdated: false,
                 message: error.message
             });
         }

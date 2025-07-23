@@ -420,6 +420,21 @@ class QAService {
         }
     }
 
+    static async deleteUserAnswer(answererId, questionId) {
+        try {
+            const deletedCount = await Answer.destroy({
+                where: {
+                    questionId: questionId,
+                    answererId: answererId
+                }
+            });
+            return deletedCount > 0;
+        } catch (error) {
+            console.error('Error deleting user answer:', error);
+            throw error;
+        }
+    }
+
     // Delete a question by ID and all its answers
     static async deleteQuestion(id) {
         try {
