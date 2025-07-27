@@ -395,8 +395,8 @@ exports.removeInvite = async (req, res) => {
         // Remove the user from the invited list
         const updatedInvitedIds = invitedIds.filter(id => id !== Number(invitedUserId));
 
-        // Update the group
-        await group.update({ invitedIds: updatedInvitedIds });
+        // Update the group through the service
+        await GroupService.updateGroup(groupId, { invitedIds: updatedInvitedIds });
 
         res.json({ success: true, message: 'Invitation removed successfully' });
     } catch (error) {

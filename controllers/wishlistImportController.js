@@ -1,4 +1,4 @@
-const amazonWishlistService = require('../services/amazonWishlistService');
+const urlImportService = require('../services/urlImportService');
 const amazonProductService = require('../services/amazonProductService');
 const aiWishlistParser = require('../services/aiWishlistParser');
 const ListItemService = require('../services/listItemService');
@@ -6,7 +6,7 @@ const imageProcessingService = require('../services/imageProcessingService');
 const { ApiError } = require('../middleware/errorHandler');
 
 /**
- * Fetch Amazon wishlist items without saving to database
+ * Fetch products from any URL without saving to database
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
@@ -21,7 +21,7 @@ exports.fetchWishlist = async (req, res, next) => {
         if (!url) {
             return res.status(400).json({
                 success: false,
-                message: 'Amazon wishlist URL is required'
+                message: 'URL is required'
             });
         }
 
@@ -32,48 +32,48 @@ exports.fetchWishlist = async (req, res, next) => {
             });
         }
 
-        console.log(`[WISHLIST-FETCH] Starting wishlist fetch for user ${userId} from URL: ${url}`);
-        console.log(`[WISHLIST-FETCH] Step 1/3: Extracting HTML content from Amazon page...`);
+        console.log(`[URL-FETCH] Starting product fetch for user ${userId} from URL: ${url}`);
+        console.log(`[URL-FETCH] Step 1/3: Extracting HTML content from page...`);
 
-        // Extract HTML content from the wishlist page
-        const htmlExtraction = await amazonWishlistService.extractWishlistHTML(url.trim());
+        // Extract HTML content from the page
+        const htmlExtraction = await urlImportService.extractPageHTML(url.trim());
         
-        console.log(`[WISHLIST-FETCH] Step 1/3: ✅ HTML extracted successfully`);
-        console.log(`[WISHLIST-FETCH] - Extraction method: ${htmlExtraction.extractionMethod}`);
-        console.log(`[WISHLIST-FETCH] - Content length: ${htmlExtraction.htmlContent.length} characters`);
-        console.log(`[WISHLIST-FETCH] - Wishlist title: "${htmlExtraction.wishlistTitle}"`);
+        console.log(`[URL-FETCH] Step 1/3: ✅ HTML extracted successfully`);
+        console.log(`[URL-FETCH] - Extraction method: ${htmlExtraction.extractionMethod}`);
+        console.log(`[URL-FETCH] - Content length: ${htmlExtraction.htmlContent.length} characters`);
+        console.log(`[URL-FETCH] - Page title: "${htmlExtraction.pageTitle}"`); 
         
-        console.log(`[WISHLIST-FETCH] Step 2/3: Processing HTML with AI parser...`);
+        console.log(`[URL-FETCH] Step 2/3: Processing HTML with AI parser...`);
 
         // Use AI to parse the HTML content with fallback to traditional scraping
         const parseResult = await aiWishlistParser.parseWithFallback(
             htmlExtraction.htmlContent,
             // Fallback function for traditional scraping
             async () => {
-                console.log('[WISHLIST-FETCH] AI parsing failed, falling back to traditional scraping method');
-                return await amazonWishlistService.importWishlistItems(url.trim(), userId);
+                console.log('[URL-FETCH] AI parsing failed, falling back to traditional scraping method');
+                throw new Error('Traditional scraping not supported for generic URLs');
             }
         );
 
-        console.log(`[WISHLIST-FETCH] Step 2/3: ✅ Parsing completed`);
-        console.log(`[WISHLIST-FETCH] - Processing method: ${parseResult.processingMethod}`);
-        console.log(`[WISHLIST-FETCH] - Items found: ${parseResult.items?.length || 0}`);
+        console.log(`[URL-FETCH] Step 2/3: ✅ Parsing completed`);
+        console.log(`[URL-FETCH] - Processing method: ${parseResult.processingMethod}`);
+        console.log(`[URL-FETCH] - Items found: ${parseResult.items?.length || 0}`);
         if (parseResult.aiMetadata) {
-            console.log(`[WISHLIST-FETCH] - AI tokens used: ${parseResult.aiMetadata.tokens_used}`);
-            console.log(`[WISHLIST-FETCH] - AI response time: ${parseResult.aiMetadata.response_time_ms}ms`);
+            console.log(`[URL-FETCH] - AI tokens used: ${parseResult.aiMetadata.tokens_used}`);
+            console.log(`[URL-FETCH] - AI response time: ${parseResult.aiMetadata.response_time_ms}ms`);
         }
 
-        console.log(`[WISHLIST-FETCH] Step 3/4: Processing images...`);
+        console.log(`[URL-FETCH] Step 3/4: Processing images...`);
 
         if (!parseResult.success || !parseResult.items || parseResult.items.length === 0) {
-            console.log(`[WISHLIST-FETCH] ⚠️  No items found in wishlist`);
+            console.log(`[URL-FETCH] ⚠️  No items found on page`);
             return res.status(200).json({
                 success: true,
-                message: 'Wishlist is empty or no items could be fetched',
+                message: 'Page has no products or no items could be fetched',
                 data: {
                     totalItems: 0,
                     items: [],
-                    wishlistTitle: htmlExtraction.wishlistTitle || 'Empty Wishlist',
+                    pageTitle: htmlExtraction.pageTitle || 'No Products Found',
                     sourceUrl: htmlExtraction.sourceUrl,
                     processingMethod: parseResult.processingMethod || 'unknown'
                 }
@@ -89,7 +89,7 @@ exports.fetchWishlist = async (req, res, next) => {
         let imageProcessingTime = 0;
 
         if (imageUrls.length > 0) {
-            console.log(`[WISHLIST-FETCH] Processing ${imageUrls.length} images...`);
+            console.log(`[URL-FETCH] Processing ${imageUrls.length} images...`);
             const imageStartTime = Date.now();
             
             try {
@@ -102,9 +102,9 @@ exports.fetchWishlist = async (req, res, next) => {
                 imageProcessingTime = Date.now() - imageStartTime;
                 
                 const successCount = imageProcessingResults.filter(r => r.imageId !== null).length;
-                console.log(`[WISHLIST-FETCH] ✅ Image processing complete: ${successCount}/${imageUrls.length} successful (${imageProcessingTime}ms)`);
+                console.log(`[URL-FETCH] ✅ Image processing complete: ${successCount}/${imageUrls.length} successful (${imageProcessingTime}ms)`);
             } catch (error) {
-                console.error(`[WISHLIST-FETCH] ❌ Image processing failed:`, error);
+                console.error(`[URL-FETCH] ❌ Image processing failed:`, error);
                 // Continue without images if processing fails
                 imageProcessingResults = imageUrls.map(url => ({
                     url: url,
@@ -131,28 +131,28 @@ exports.fetchWishlist = async (req, res, next) => {
                 delete processedItem.imageUrl; // Remove imageUrl, replace with imageId
             } else if (item.imageUrl) {
                 // Keep imageUrl if processing failed
-                console.warn(`[WISHLIST-FETCH] ⚠️  No processed image for URL: ${item.imageUrl}`);
+                console.warn(`[URL-FETCH] ⚠️  No processed image for URL: ${item.imageUrl}`);
             }
             
             return processedItem;
         });
 
-        console.log(`[WISHLIST-FETCH] Step 4/4: Preparing API response...`);
+        console.log(`[URL-FETCH] Step 4/4: Preparing API response...`);
 
         // Prepare response message based on processing method
         const processingMethod = parseResult.processingMethod;
         const methodDescription = processingMethod === 'ai_parsing' ? 'using AI parsing' : 'using traditional scraping';
         const imageSuccessCount = imageProcessingResults.filter(r => r.imageId !== null).length;
         
-        console.log(`[WISHLIST-FETCH] Step 4/4: ✅ Response prepared successfully`);
-        console.log(`[WISHLIST-FETCH] 🎉 COMPLETE: Found ${parseResult.items.length} items ${methodDescription}, processed ${imageSuccessCount} images`);
-        console.log(`[WISHLIST-FETCH] Total processing time: ${Date.now() - startTime}ms (images: ${imageProcessingTime}ms)`);
+        console.log(`[URL-FETCH] Step 4/4: ✅ Response prepared successfully`);
+        console.log(`[URL-FETCH] 🎉 COMPLETE: Found ${parseResult.items.length} items ${methodDescription}, processed ${imageSuccessCount} images`);
+        console.log(`[URL-FETCH] Total processing time: ${Date.now() - startTime}ms (images: ${imageProcessingTime}ms)`);
         
         res.status(200).json({
             success: true,
-            message: `Successfully fetched ${parseResult.items.length} items from Amazon wishlist ${methodDescription}${imageSuccessCount > 0 ? ` and processed ${imageSuccessCount} images` : ''}`,
+            message: `Successfully fetched ${parseResult.items.length} items from URL ${methodDescription}${imageSuccessCount > 0 ? ` and processed ${imageSuccessCount} images` : ''}`,
             data: {
-                wishlistTitle: htmlExtraction.wishlistTitle,
+                pageTitle: htmlExtraction.pageTitle,
                 totalItems: parseResult.items.length,
                 items: processedItems,
                 sourceUrl: htmlExtraction.sourceUrl,
@@ -170,7 +170,7 @@ exports.fetchWishlist = async (req, res, next) => {
         });
 
     } catch (error) {
-        console.error('Error fetching wishlist:', error);
+        console.error('Error fetching products from URL:', error);
         next(error);
     }
 };

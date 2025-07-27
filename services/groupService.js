@@ -136,8 +136,8 @@ class GroupService {
         }
 
         // Update the group
-        await group.update(filteredUpdateData);
-        return group;
+        const updatedGroup = await this.updateGroup(groupId, filteredUpdateData);
+        return updatedGroup;
     }
 
     /**
@@ -171,9 +171,8 @@ class GroupService {
         }
 
         // Mark the group as deleted
-        await group.update({ deleted: true });
-
-        return group;
+        const updatedGroup = await this.updateGroup(groupId, { deleted: true });
+        return updatedGroup;
     }
 
     /**
@@ -470,7 +469,7 @@ class GroupService {
             updatedInvitedIds.push(invitedUserId);
 
             // Update the group with the new invitedIds array
-            await group.update({ invitedIds: updatedInvitedIds });
+            await this.updateGroup(groupId, { invitedIds: updatedInvitedIds });
             return true;
         } catch (error) {
             console.error('Error in inviteUserToGroup:', error);

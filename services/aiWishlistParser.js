@@ -80,24 +80,26 @@ class AIWishlistParser {
     buildWishlistParsingPrompt(htmlContent, options = {}) {
         const requiredFields = options.fields || ['name', 'price', 'imageUrl', 'linkUrl'];
         
-        return `You are an expert at parsing Amazon wishlist HTML content. Analyze the provided HTML and extract ALL product items from the wishlist.
+        return `You are an expert at parsing HTML content to extract product information from any website. Analyze the provided HTML and extract ALL product items that appear to be for sale or listed.
 
 IMPORTANT INSTRUCTIONS:
 1. Return ONLY a valid JSON array, no additional text or explanations
 2. Each item must be a JSON object with these exact fields: ${requiredFields.join(', ')}
-3. For price: extract only the number (e.g., "29.99"), no currency symbols
-4. For imageUrl: use full HTTPS URLs, convert relative URLs to absolute
-5. For linkUrl: ensure full Amazon product URLs (e.g., https://amazon.com/dp/B123...)
+3. For price: extract only the number (e.g., "29.99"), no currency symbols or text
+4. For imageUrl: use full HTTPS URLs, convert relative URLs to absolute URLs when possible
+5. For linkUrl: use full product URLs when available, convert relative URLs to absolute when possible
 6. If a field is missing or unclear, use null
-7. Skip any items that don't appear to be actual products
+7. Skip any items that don't appear to be actual products (like navigation, ads, etc.)
+8. Look for common product indicators: titles, prices, images, product links
+9. Products can be in various formats: grid layouts, list layouts, cards, etc.
 
 Expected JSON format:
 [
   {
     "name": "Product Name Here",
     "price": "29.99",
-    "imageUrl": "https://m.media-amazon.com/images/I/example.jpg",
-    "linkUrl": "https://www.amazon.com/dp/B123456789"
+    "imageUrl": "https://example.com/images/product.jpg",
+    "linkUrl": "https://example.com/product/123"
   }
 ]
 
@@ -203,11 +205,13 @@ Return the JSON array now:`;
         }
 
         try {
-            // Convert relative URLs to absolute Amazon URLs
+            // Convert relative URLs to absolute URLs
             if (url.startsWith('//')) {
                 url = 'https:' + url;
             } else if (url.startsWith('/')) {
-                url = 'https://www.amazon.com' + url;
+                // For relative URLs, we can't convert without knowing the base domain
+                // Return as-is and let the client handle it
+                return url;
             }
 
             const urlObj = new URL(url);
@@ -217,18 +221,13 @@ Return the JSON array now:`;
                 return null;
             }
 
-            // Type-specific validation
+            // Less strict validation for generic URLs
             if (type === 'image') {
-                // Allow common image domains
-                const imageDomains = ['amazon.com', 'ssl-images-amazon.com', 'm.media-amazon.com', 'images-na.ssl-images-amazon.com'];
-                if (!imageDomains.some(domain => urlObj.hostname.includes(domain))) {
-                    console.warn(`Image URL from unexpected domain: ${urlObj.hostname}`);
-                }
+                // Allow any domain for images
+                console.log(`Image URL accepted from domain: ${urlObj.hostname}`);
             } else if (type === 'product') {
-                // Ensure it's an Amazon product URL
-                if (!urlObj.hostname.includes('amazon.com')) {
-                    console.warn(`Product URL from unexpected domain: ${urlObj.hostname}`);
-                }
+                // Allow any domain for product URLs
+                console.log(`Product URL accepted from domain: ${urlObj.hostname}`);
             }
 
             return url;
