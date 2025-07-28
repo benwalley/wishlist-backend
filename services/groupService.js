@@ -17,13 +17,13 @@ class GroupService {
             if (!members.includes(groupData.ownerId)) {
                 members.push(groupData.ownerId);
             }
-            
+
             // Update the groupData with the modified members array
             const updatedGroupData = {
                 ...groupData,
                 members
             };
-            
+
             const group = await Group.create(updatedGroupData);
             return group;
         } catch (error) {
@@ -61,22 +61,22 @@ class GroupService {
             if (!group) {
                 return null;
             }
-            
+
             // If updating members, ensure the owner is included
             if (updateData.members !== undefined) {
                 const members = Array.isArray(updateData.members) ? [...updateData.members] : [];
                 const ownerId = updateData.ownerId || group.ownerId;
-                
+
                 if (!members.includes(ownerId)) {
                     members.push(ownerId);
                 }
-                
+
                 updateData = {
                     ...updateData,
                     members
                 };
             }
-            
+
             await group.update(updateData);
             return group;
         } catch (error) {
@@ -121,17 +121,17 @@ class GroupService {
                 filteredUpdateData[field] = updateData[field];
             }
         }
-        
+
         // If updating members, ensure the owner is included
         if (filteredUpdateData.members !== undefined) {
             const members = Array.isArray(filteredUpdateData.members) ? [...filteredUpdateData.members] : [];
             // Use the new owner ID if ownership is being transferred, otherwise use current owner
             const ownerId = filteredUpdateData.ownerId !== undefined ? filteredUpdateData.ownerId : group.ownerId;
-            
+
             if (!members.includes(ownerId)) {
                 members.push(ownerId);
             }
-            
+
             filteredUpdateData.members = members;
         }
 
@@ -230,12 +230,12 @@ class GroupService {
             if (!group) {
                 throw new Error('Group not found');
             }
-            
+
             // Don't allow removing the owner from members
             if (memberId === group.ownerId) {
                 throw new Error('Cannot remove the owner from group members');
             }
-            
+
             const members = group.members || [];
             const updatedMembers = members.filter((id) => id !== memberId);
             await group.update({ members: updatedMembers });
@@ -373,7 +373,7 @@ class GroupService {
         try {
             // Get all unique user IDs from the group
             const allUserIds = new Set();
-            
+
             if (group.ownerId) allUserIds.add(group.ownerId);
             if (Array.isArray(group.members)) {
                 group.members.forEach(id => allUserIds.add(id));
@@ -442,7 +442,11 @@ class GroupService {
     static async inviteUserToGroup(groupId, invitedUserId, invitingUserId) {
         try {
             // First get and verify access
-            const { group, access } = await this.getGroupWithAccessCheck(groupId, invitingUserId);
+            const group = await await this.getGroupById(groupId);
+            if (!group) {
+                return res.status(404).json({ error: 'Group not found' });
+            }
+            const access = GroupService.checkUserAccess(invitingUserId, group);
 
             if (!access.isOwner && !access.isAdmin) {
                 throw new Error('Only group owners and admins can invite users');
@@ -460,7 +464,6 @@ class GroupService {
             // Create a new array with existing invited IDs plus the new one
             let updatedInvitedIds = [];
 
-            // Use existing invitedIds if available, or empty array if not
             if (Array.isArray(group.invitedIds)) {
                 updatedInvitedIds = [...group.invitedIds];
             }

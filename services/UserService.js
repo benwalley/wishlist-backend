@@ -24,6 +24,9 @@ class UserService {
                 });
             }
 
+            // Convert email to lowercase for consistency
+            email = email.toLowerCase().trim();
+
             // Check if email already exists
             const existingUser = await User.findOne({ where: { email } });
             if (existingUser) {
@@ -93,6 +96,9 @@ class UserService {
             });
         }
 
+        // Convert email to lowercase for consistency
+        email = email.toLowerCase().trim();
+
         // Check if the user already exists
         let user = await User.findOne({
             where: { email },
@@ -139,6 +145,9 @@ class UserService {
                 publicMessage: 'Email and password are required to log in.'
             });
         }
+
+        // Convert email to lowercase for consistency
+        email = email.toLowerCase().trim();
 
         // Helper function to normalize names for comparison
         const normalizeName = (name) => {

@@ -494,18 +494,9 @@ class ListService {
             const listsWithCount = await Promise.all(filteredLists.map(async (list) => {
                 const itemCount = await ListItem.count({
                     where: {
+                        lists: { [Op.contains]: [list.id] },
                         deleted: false
-                    },
-                    include: [{
-                        model: List,
-                        as: 'associatedLists',
-                        where: {
-                            id: list.id
-                        },
-                        through: {
-                            attributes: []
-                        }
-                    }]
+                    }
                 });
 
                 return {

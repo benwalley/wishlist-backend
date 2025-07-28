@@ -6,11 +6,12 @@
   <component name="ChangeListManager">
     <list default="true" id="ac633e9b-c999-467f-b1d6-59c1a67c9c75" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/auth/loginController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/auth/loginController.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/controllers/groupController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/groupController.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/wishlistImportController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/wishlistImportController.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/wishlistImport.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/wishlistImport.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/aiWishlistParser.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/aiWishlistParser.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/usersController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/usersController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/UserService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/UserService.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/services/groupService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/groupService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/listService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listService.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -167,7 +168,8 @@
       <workItem from="1753486987575" duration="1454000" />
       <workItem from="1753507958211" duration="2236000" />
       <workItem from="1753555239004" duration="848000" />
-      <workItem from="1753648550101" duration="1809000" />
+      <workItem from="1753648550101" duration="7595000" />
+      <workItem from="1753667692864" duration="618000" />
     </task>
     <servers />
   </component>

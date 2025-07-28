@@ -1,9 +1,9 @@
-const { User } = require('../models');
+const {User} = require('../models');
 const GroupService = require('../services/groupService');
 const UserService = require('../services/UserService');
 const ListService = require('../services/listService');
 const QAService = require('../services/qaService');
-const { Op } = require('sequelize');
+const {Op} = require('sequelize');
 
 /**
  * Get all groups where the user is a member
@@ -13,7 +13,7 @@ const { Op } = require('sequelize');
 exports.getCurrentGroups = async (req, res) => {
     // Passport populates req.user with the authenticated user
     if (!req.user) {
-        return res.status(401).json({ error: 'User not authenticated.' });
+        return res.status(401).json({error: 'User not authenticated.'});
     }
     const id = req.user?.id;
     const groupList = await GroupService.getGroupsByMember(id);
@@ -28,7 +28,7 @@ exports.getCurrentGroups = async (req, res) => {
 exports.getInvitedGroups = async (req, res) => {
     // Passport populates req.user with the authenticated user
     if (!req.user) {
-        return res.status(401).json({ error: 'User not authenticated.' });
+        return res.status(401).json({error: 'User not authenticated.'});
     }
     const id = req.user?.id;
     const groupList = await GroupService.getGroupsByInvited(id);
@@ -42,7 +42,7 @@ exports.getInvitedGroups = async (req, res) => {
  */
 exports.addGroup = async (req, res) => {
     if (!req.user) {
-        return res.status(401).json({ error: 'User not authenticated.' });
+        return res.status(401).json({error: 'User not authenticated.'});
     }
     console.log('creating this')
     try {
@@ -77,7 +77,7 @@ exports.addGroup = async (req, res) => {
 exports.addUsers = async (req, res) => {
     // Passport populates req.user with the authenticated user
     if (!req.user) {
-        return res.status(401).json({ error: 'User not authenticated.' });
+        return res.status(401).json({error: 'User not authenticated.'});
     }
     const id = req.user?.id;
     const groupList = await GroupService.getGroupsByMember(id);
@@ -93,27 +93,27 @@ exports.inviteToGroup = async (req, res) => {
     try {
         // Get authenticated user's ID
         if (!req.user) {
-            return res.status(401).json({ success: false, message: 'User not authenticated.' });
+            return res.status(401).json({success: false, message: 'User not authenticated.'});
         }
 
         const invitingUserId = req.user.id;
         const groupId = req.params.groupId;
-        const { email } = req.body;
+        const {email} = req.body;
 
         if (!groupId) {
-            return res.status(400).json({ success: false, message: 'Group ID is required.' });
+            return res.status(400).json({success: false, message: 'Group ID is required.'});
         }
 
         if (!email) {
-            return res.status(400).json({ success: false, message: 'Email is required.' });
+            return res.status(400).json({success: false, message: 'Email is required.'});
         }
 
         // Parse emails - handle both single email and comma-separated emails
-        const emailList = email.split(',').map(e => e.trim()).filter(e => e.length > 0);
+        const emailList = email.split(',').map(e => e.toLowerCase().trim()).filter(e => e.length > 0);
         console.log(emailList);
 
         if (emailList.length === 0) {
-            return res.status(400).json({ success: false, message: 'At least one valid email is required.' });
+            return res.status(400).json({success: false, message: 'At least one valid email is required.'});
         }
 
         const results = [];
@@ -136,11 +136,7 @@ exports.inviteToGroup = async (req, res) => {
                 });
 
             } catch (error) {
-                if (error.message.includes('Group not found')) {
-                    return res.status(404).json({ success: false, message: 'Group not found.' });
-                } else if (error.message.includes('Access denied') || error.message.includes('Only group owners')) {
-                    return res.status(403).json({ success: false, message: error.message });
-                } else if (error.message.includes('User is already a member of this group')) {
+                if (error.message.includes('User is already a member of this group')) {
                     alreadyMembers.push({
                         email: emailAddress,
                         success: false,
@@ -219,7 +215,7 @@ exports.inviteToGroup = async (req, res) => {
 
     } catch (error) {
         console.error('Error inviting user to group:', error);
-        return res.status(500).json({ success: false, message: 'Failed to invite user to group.' });
+        return res.status(500).json({success: false, message: 'Failed to invite user to group.'});
     }
 };
 
@@ -232,33 +228,32 @@ exports.getGroup = async (req, res) => {
     try {
         // Get authenticated user's ID
         if (!req.user) {
-            return res.status(401).json({ error: 'User not authenticated.' });
+            return res.status(401).json({error: 'User not authenticated.'});
         }
 
         const userId = req.user.id;
         const groupId = req.params.groupId;
 
         if (!groupId) {
-            return res.status(400).json({ error: 'Group ID is required.' });
+            return res.status(400).json({error: 'Group ID is required.'});
         }
 
         try {
-            // Get group and check access in one operation
-            const { group } = await GroupService.getGroupWithAccessCheck(groupId, userId);
+            const {group} = await GroupService.getGroupWithAccessCheck(groupId, userId);
 
             // Return the group
             return res.json(group);
         } catch (error) {
             if (error.message.includes('Group not found')) {
-                return res.status(404).json({ error: 'Group not found.' });
+                return res.status(404).json({error: 'Group not found.'});
             } else if (error.message.includes('Access denied')) {
-                return res.status(403).json({ error: error.message });
+                return res.status(403).json({error: error.message});
             }
             throw error; // Re-throw for the outer catch block to handle
         }
     } catch (error) {
         console.error('Error getting group:', error);
-        return res.status(500).json({ error: 'Failed to retrieve group.' });
+        return res.status(500).json({error: 'Failed to retrieve group.'});
     }
 };
 
@@ -271,14 +266,14 @@ exports.getGroupMembers = async (req, res) => {
     try {
         // Get authenticated user's ID
         if (!req.user) {
-            return res.status(401).json({ error: 'User not authenticated.' });
+            return res.status(401).json({error: 'User not authenticated.'});
         }
 
         const userId = req.user.id;
         const groupId = req.params.groupId;
 
         if (!groupId) {
-            return res.status(400).json({ error: 'Group ID is required.' });
+            return res.status(400).json({error: 'Group ID is required.'});
         }
 
         try {
@@ -290,15 +285,15 @@ exports.getGroupMembers = async (req, res) => {
 
         } catch (error) {
             if (error.message.includes('Group not found')) {
-                return res.status(404).json({ error: 'Group not found.' });
+                return res.status(404).json({error: 'Group not found.'});
             } else if (error.message.includes('Access denied')) {
-                return res.status(403).json({ error: error.message });
+                return res.status(403).json({error: error.message});
             }
             throw error; // Re-throw for the outer catch block to handle
         }
     } catch (error) {
         console.error('Error getting group members:', error);
-        return res.status(500).json({ error: 'Failed to retrieve group members.' });
+        return res.status(500).json({error: 'Failed to retrieve group members.'});
     }
 };
 
@@ -311,14 +306,24 @@ exports.getInvitedUsers = async (req, res) => {
     try {
         // Check if user is authenticated
         if (!req.user) {
-            return res.status(401).json({ error: 'User not authenticated.' });
+            return res.status(401).json({error: 'User not authenticated.'});
         }
 
         const userId = req.user.id;
         const groupId = req.params.groupId;
 
-        // Verify group exists and user has access
-        const { group, access } = await GroupService.getGroupWithAccessCheck(groupId, userId);
+        // Get group by ID to include all users (including inactive ones)
+        const group = await GroupService.getGroupById(groupId);
+        if (!group) {
+            return res.status(404).json({error: 'Group not found'});
+        }
+        const access = GroupService.checkUserAccess(userId, group);
+        if (!access.hasAccess) {
+            return res.status(403).json({
+                success: false,
+                message: 'Access denied. You must be an owner, admin, member, or invitee of this group.'
+            });
+        }
 
         // Get invited user IDs from the group
         const invitedIds = group.invitedIds || [];
@@ -345,14 +350,14 @@ exports.getInvitedUsers = async (req, res) => {
         console.error('Error in getInvitedUsers:', error);
 
         if (error.message === 'Group not found') {
-            return res.status(404).json({ error: 'Group not found' });
+            return res.status(404).json({error: 'Group not found'});
         }
 
         if (error.message.includes('Access denied')) {
-            return res.status(403).json({ error: 'Access denied. You must be an owner, admin, member, or invitee of this group.' });
+            return res.status(403).json({error: 'Access denied. You must be an owner, admin, member, or invitee of this group.'});
         }
 
-        res.status(500).json({ error: 'Failed to retrieve invited users' });
+        res.status(500).json({error: 'Failed to retrieve invited users'});
     }
 };
 
@@ -365,7 +370,7 @@ exports.removeInvite = async (req, res) => {
     try {
         // Check if user is authenticated
         if (!req.user) {
-            return res.status(401).json({ error: 'User not authenticated.' });
+            return res.status(401).json({error: 'User not authenticated.'});
         }
 
         const userId = req.user.id;
@@ -373,15 +378,21 @@ exports.removeInvite = async (req, res) => {
         const invitedUserId = req.params.userId; // The user ID to remove from invited list
 
         if (!invitedUserId) {
-            return res.status(400).json({ error: 'User ID is required' });
+            return res.status(400).json({error: 'User ID is required'});
         }
 
-        // Verify group exists and user has access
-        const { group, access } = await GroupService.getGroupWithAccessCheck(groupId, userId);
+        // Get group by ID to include all users (including inactive ones)
+        const group = await GroupService.getGroupById(groupId);
+        if (!group) {
+            return res.status(404).json({success: false, message: 'Group not found'});
+        }
+
+        // Check if user has access to the group
+        const access = GroupService.checkUserAccess(userId, group);
 
         // Only group owners and admins can remove invites
         if (!access.isOwner && !access.isAdmin) {
-            return res.status(403).json({ error: 'Only group owners and admins can remove invitations' });
+            return res.status(403).json({success: false, message: 'Only group owners and admins can remove invitations'});
         }
 
         // Get invited user IDs from the group
@@ -389,28 +400,28 @@ exports.removeInvite = async (req, res) => {
 
         // Check if the user is actually invited
         if (!invitedIds.includes(Number(invitedUserId))) {
-            return res.status(404).json({ error: 'User is not invited to this group' });
+            return res.status(404).json({error: 'User is not invited to this group'});
         }
 
         // Remove the user from the invited list
         const updatedInvitedIds = invitedIds.filter(id => id !== Number(invitedUserId));
 
         // Update the group through the service
-        await GroupService.updateGroup(groupId, { invitedIds: updatedInvitedIds });
+        await GroupService.updateGroup(groupId, {invitedIds: updatedInvitedIds});
 
-        res.json({ success: true, message: 'Invitation removed successfully' });
+        res.json({success: true, message: 'Invitation removed successfully'});
     } catch (error) {
         console.error('Error in removeInvite:', error);
 
         if (error.message === 'Group not found') {
-            return res.status(404).json({ error: 'Group not found' });
+            return res.status(404).json({error: 'Group not found'});
         }
 
         if (error.message.includes('Access denied')) {
-            return res.status(403).json({ error: 'Access denied. You must be an owner or admin of this group.' });
+            return res.status(403).json({error: 'Access denied. You must be an owner or admin of this group.'});
         }
 
-        res.status(500).json({ error: 'Failed to remove invitation' });
+        res.status(500).json({error: 'Failed to remove invitation'});
     }
 };
 
@@ -423,7 +434,7 @@ exports.updateGroup = async (req, res) => {
     try {
         // Check if user is authenticated
         if (!req.user) {
-            return res.status(401).json({ error: 'User not authenticated.' });
+            return res.status(401).json({error: 'User not authenticated.'});
         }
 
         const userId = req.user.id;
@@ -440,7 +451,7 @@ exports.updateGroup = async (req, res) => {
     } catch (error) {
         console.error('Error in updateGroup:', error);
 
-        res.status(500).json({ error: 'Failed to update group' });
+        res.status(500).json({error: 'Failed to update group'});
     }
 };
 
@@ -453,7 +464,7 @@ exports.deleteGroup = async (req, res) => {
     try {
         // Check if user is authenticated
         if (!req.user) {
-            return res.status(401).json({ error: 'User not authenticated.' });
+            return res.status(401).json({error: 'User not authenticated.'});
         }
 
         const userId = req.user.id;
@@ -470,18 +481,18 @@ exports.deleteGroup = async (req, res) => {
         console.error('Error in deleteGroup:', error);
 
         if (error.message === 'Group not found') {
-            return res.status(404).json({ error: 'Group not found' });
+            return res.status(404).json({error: 'Group not found'});
         }
 
         if (error.message.includes('Only the group owner')) {
-            return res.status(403).json({ error: error.message });
+            return res.status(403).json({error: error.message});
         }
 
         if (error.message.includes('Access denied')) {
-            return res.status(403).json({ error: error.message });
+            return res.status(403).json({error: error.message});
         }
 
-        res.status(500).json({ error: 'Failed to delete group' });
+        res.status(500).json({error: 'Failed to delete group'});
     }
 };
 
@@ -494,7 +505,7 @@ exports.leaveGroup = async (req, res) => {
     try {
         // Check if user is authenticated
         if (!req.user) {
-            return res.status(401).json({ error: 'User not authenticated.' });
+            return res.status(401).json({error: 'User not authenticated.'});
         }
 
         const userId = req.user.id;
@@ -511,18 +522,18 @@ exports.leaveGroup = async (req, res) => {
         console.error('Error in leaveGroup:', error);
 
         if (error.message === 'Group not found') {
-            return res.status(404).json({ success: false, error: 'Group not found' });
+            return res.status(404).json({success: false, error: 'Group not found'});
         }
 
         if (error.message.includes('not a member')) {
-            return res.status(400).json({ success: false, error: error.message });
+            return res.status(400).json({success: false, error: error.message});
         }
 
         if (error.message.includes('owner cannot leave')) {
-            return res.status(403).json({ success: false, error: error.message });
+            return res.status(403).json({success: false, error: error.message});
         }
 
-        res.status(500).json({ success: false,  error: error.message });
+        res.status(500).json({success: false, error: error.message});
     }
 };
 
@@ -535,7 +546,7 @@ exports.acceptInvitation = async (req, res) => {
     try {
         // Check if user is authenticated
         if (!req.user) {
-            return res.status(401).json({ error: 'User not authenticated.' });
+            return res.status(401).json({error: 'User not authenticated.'});
         }
 
         const userId = req.user.id;
@@ -552,14 +563,14 @@ exports.acceptInvitation = async (req, res) => {
         console.error('Error in acceptInvitation:', error);
 
         if (error.message === 'Group not found') {
-            return res.status(404).json({ success: false, error: 'Group not found' });
+            return res.status(404).json({success: false, error: 'Group not found'});
         }
 
         if (error.message.includes('not invited')) {
-            return res.status(400).json({ success: false, error: error.message });
+            return res.status(400).json({success: false, error: error.message});
         }
 
-        res.status(500).json({ success: false, error: 'Failed to accept group invitation' });
+        res.status(500).json({success: false, error: 'Failed to accept group invitation'});
     }
 };
 
@@ -572,7 +583,7 @@ exports.declineInvitation = async (req, res) => {
     try {
         // Check if user is authenticated
         if (!req.user) {
-            return res.status(401).json({ error: 'User not authenticated.' });
+            return res.status(401).json({error: 'User not authenticated.'});
         }
 
         const userId = req.user.id;
@@ -589,14 +600,14 @@ exports.declineInvitation = async (req, res) => {
         console.error('Error in declineInvitation:', error);
 
         if (error.message === 'Group not found') {
-            return res.status(404).json({ success: false, error: 'Group not found' });
+            return res.status(404).json({success: false, error: 'Group not found'});
         }
 
         if (error.message.includes('not invited')) {
-            return res.status(400).json({ success: false, error: error.message });
+            return res.status(400).json({success: false, error: error.message});
         }
 
-        res.status(500).json({ success: false, error: 'Failed to decline group invitation' });
+        res.status(500).json({success: false, error: 'Failed to decline group invitation'});
     }
 };
 
@@ -616,8 +627,8 @@ exports.bulkShareWithGroup = async (req, res) => {
             });
         }
 
-        const { groupId } = req.params;
-        const { listIds, questionIds } = req.body;
+        const {groupId} = req.params;
+        const {listIds, questionIds} = req.body;
         const userId = req.user.id;
 
         // Array to collect results

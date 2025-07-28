@@ -2,7 +2,7 @@ const UserService = require('../../services/UserService');
 
 exports.login = async (req, res) => {
     try {
-        const { email, password, username } = req.body;
+        let { email, password, username } = req.body;
 
         // Validate input
         if (!email || !password) {
@@ -11,6 +11,9 @@ exports.login = async (req, res) => {
                 message: 'Email and password are required.',
             });
         }
+
+        // Convert email to lowercase for consistency
+        email = email.toLowerCase().trim();
 
         // Authenticate user and generate tokens
         const { user, tokens } = await UserService.authenticateUser(email, password, username);

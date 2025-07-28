@@ -73,11 +73,14 @@ exports.getAccessibleUsers = async (req, res) => {
  */
 exports.getPublicUsers = async (req, res, next) => {
     try {
-        const { search } = req.query;
+        let { search } = req.query;
 
         if (!search || search.trim() === '') {
             return res.status(400).json({ error: 'Search query is required.' });
         }
+
+        // Convert search to lowercase for consistent email searching
+        search = search.toLowerCase().trim();
 
         const users = await models.User.findAll({
             where: {
