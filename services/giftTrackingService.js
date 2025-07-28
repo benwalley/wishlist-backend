@@ -1,5 +1,5 @@
 const { ListItem, Getting, GoInOn, sequelize, Proposal, User, Contributor, EventRecipient, Event } = require('../models');
-const UserService = require('./UserService');
+const UserService = require('./userService');
 const { ApiError } = require('../middleware/errorHandler');
 const { Op } = require('sequelize');
 

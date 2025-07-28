@@ -1,6 +1,6 @@
 const models = require('../models');
 const { Op } = require('sequelize');
-const UserService = require('../services/UserService');
+const UserService = require('../services/userService');
 const listService = require('../services/listService');
 const bcrypt = require('bcryptjs');
 

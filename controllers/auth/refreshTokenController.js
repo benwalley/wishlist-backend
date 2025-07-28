@@ -1,4 +1,4 @@
-const UserService = require('../../services/UserService');
+const UserService = require('../../services/userService');
 
 exports.refreshToken = async (req, res, next) => {
     try {

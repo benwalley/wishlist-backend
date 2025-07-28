@@ -1,4 +1,4 @@
-const UserService = require('../../services/UserService');
+const UserService = require('../../services/userService');
 const models = require('../../models');
 
 exports.switchUser = async (req, res) => {

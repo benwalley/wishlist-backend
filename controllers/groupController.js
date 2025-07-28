@@ -1,6 +1,6 @@
 const {User} = require('../models');
 const GroupService = require('../services/groupService');
-const UserService = require('../services/UserService');
+const UserService = require('../services/userService');
 const ListService = require('../services/listService');
 const QAService = require('../services/qaService');
 const {Op} = require('sequelize');
