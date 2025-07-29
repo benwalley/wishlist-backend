@@ -7,7 +7,7 @@ const { ApiError } = require('../middleware/errorHandler');
 const listService = require('./listService');
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET;
+const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET;
 
 class UserService {
     /**
