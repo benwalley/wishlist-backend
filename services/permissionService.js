@@ -1,7 +1,24 @@
-const { List, ListItem } = require('../models');
+const { List, ListItem, User } = require('../models');
 const { ApiError } = require('../middleware/errorHandler');
+const UserService = require('./userService');
 
 class PermissionService {
+    /**
+     * Check if a user is the parent of another user
+     * @param {number|string} parentUserId - The potential parent user ID
+     * @param {number|string} childUserId - The potential child user ID
+     * @returns {Promise<boolean>} - True if parentUserId is parent of childUserId
+     */
+    static async isParentOfUser(parentUserId, childUserId) {
+        try {
+            const childUser = await User.findByPk(childUserId);
+            return childUser && String(childUser.parentId) === String(parentUserId);
+        } catch (error) {
+            console.error('Error checking parent-child relationship:', error);
+            return false;
+        }
+    }
+
     /**
      * Check if a user can add items to specific lists
      * @param {number|string} userId - The user ID
@@ -28,12 +45,15 @@ class PermissionService {
                 };
             }
 
-            // Verify user owns all the lists
+            // Verify user owns all the lists OR is parent of list owners
             for (const list of lists) {
-                if (String(list.ownerId) !== String(userId)) {
+                const isOwner = String(list.ownerId) === String(userId);
+                const isParentOfOwner = await this.isParentOfUser(userId, list.ownerId);
+                
+                if (!isOwner && !isParentOfOwner) {
                     return {
                         canAccess: false,
-                        error: 'You can only add items to lists you own',
+                        error: 'You can only add items to lists you own or your subusers own',
                         errorType: 'UNAUTHORIZED'
                     };
                 }
@@ -68,10 +88,13 @@ class PermissionService {
                 };
             }
 
-            if (String(item.createdById) !== String(userId)) {
+            const isItemCreator = String(item.createdById) === String(userId);
+            const isParentOfCreator = await this.isParentOfUser(userId, item.createdById);
+            
+            if (!isItemCreator && !isParentOfCreator) {
                 return {
                     canAccess: false,
-                    error: 'You can only modify items you created',
+                    error: 'You can only modify items you created or items created by your subusers',
                     errorType: 'UNAUTHORIZED'
                 };
             }
