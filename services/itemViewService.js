@@ -1,5 +1,7 @@
 const { ItemView } = require('../models');
 const { ApiError } = require('../middleware/errorHandler');
+const UserService = require('./userService');
+const PermissionService = require('./permissionService');
 
 class ItemViewService {
     /**
@@ -229,7 +231,15 @@ class ItemViewService {
             const { QueryTypes } = require('sequelize');
             const { sequelize } = require('../models');
 
-            // Query to get count of items in the list that user hasn't viewed
+            // Get user's group memberships
+            const userGroups = await UserService.getUserGroups(userId);
+            const userGroupIds = userGroups.map(group => group.id);
+
+            // Check if user has access to the list (for matchListVisibility logic)
+            const listAccess = await PermissionService.canUserAccessList(userId, listId);
+            const hasListAccess = listAccess.canAccess;
+
+            // Query to get count of items in the list that user hasn't viewed AND can view
             const result = await sequelize.query(`
                 SELECT COUNT(*) as unviewed_count
                 FROM list_items li
@@ -237,8 +247,20 @@ class ItemViewService {
                 WHERE li.lists @> ARRAY[:listId]::integer[]
                 AND li.deleted = false
                 AND iv.item_id IS NULL
+                AND (
+                    li."isPublic" = true
+                    OR li."createdById" = :userId
+                    OR (li."visibleToUsers" IS NOT NULL AND :userId = ANY(li."visibleToUsers"))
+                    OR (li."matchListVisibility" = true AND :hasListAccess = true)
+                    OR (li."visibleToGroups" IS NOT NULL AND li."visibleToGroups" && ARRAY[:userGroupIds]::integer[])
+                )
             `, {
-                replacements: { userId, listId },
+                replacements: { 
+                    userId, 
+                    listId, 
+                    hasListAccess,
+                    userGroupIds: userGroupIds.length > 0 ? userGroupIds : [0] // Use [0] if empty to avoid SQL errors
+                },
                 type: QueryTypes.SELECT
             });
 

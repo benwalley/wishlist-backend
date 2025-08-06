@@ -49,7 +49,7 @@ class PermissionService {
             for (const list of lists) {
                 const isOwner = String(list.ownerId) === String(userId);
                 const isParentOfOwner = await this.isParentOfUser(userId, list.ownerId);
-                
+
                 if (!isOwner && !isParentOfOwner) {
                     return {
                         canAccess: false,
@@ -90,7 +90,7 @@ class PermissionService {
 
             const isItemCreator = String(item.createdById) === String(userId);
             const isParentOfCreator = await this.isParentOfUser(userId, item.createdById);
-            
+
             if (!isItemCreator && !isParentOfCreator) {
                 return {
                     canAccess: false,
@@ -161,7 +161,7 @@ class PermissionService {
         }
 
         // Item is explicitly shared with user
-        if (item.visibleToUsers && item.visibleToUsers.includes(String(userId))) {
+        if (item.visibleToUsers && item.visibleToUsers.includes(userId)) {
             return true;
         }
 

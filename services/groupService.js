@@ -556,6 +556,7 @@ class GroupService {
 
     /**
      * Leave a group - remove user from members and adminIds, add to invitedIds
+     * Also removes all of the user's subusers from the group
      * @param {number} groupId - The ID of the group
      * @param {number} userId - The ID of the user leaving the group
      * @returns {Promise<Object>} The updated group
@@ -583,22 +584,38 @@ class GroupService {
             throw new Error('You are not a member of this group');
         }
 
+        // Find all subusers of the leaving user
+        const subusers = await User.findAll({
+            where: { parentId: userId },
+            attributes: ['id']
+        });
+        const subuserIds = subusers.map(subuser => subuser.id);
+
         // Update fields
         let updatedMembers = [...(group.members || [])];
         let updatedAdminIds = [...(group.adminIds || [])];
         let updatedInvitedIds = [...(group.invitedIds || [])];
 
-        // Remove from members if present
+        // Remove the user from members if present
         if (isMember) {
             updatedMembers = updatedMembers.filter(id => id !== userId);
         }
 
-        // Remove from adminIds if present
+        // Remove the user from adminIds if present
         if (isAdmin) {
             updatedAdminIds = updatedAdminIds.filter(id => id !== userId);
         }
 
-        // Add to invitedIds if not already there
+        // Remove all subusers from members
+        updatedMembers = updatedMembers.filter(id => !subuserIds.includes(id));
+
+        // Remove all subusers from adminIds
+        updatedAdminIds = updatedAdminIds.filter(id => !subuserIds.includes(id));
+
+        // Remove all subusers from invitedIds
+        updatedInvitedIds = updatedInvitedIds.filter(id => !subuserIds.includes(id));
+
+        // Add the user to invitedIds if not already there
         if (!updatedInvitedIds.includes(userId)) {
             updatedInvitedIds.push(userId);
         }

@@ -1,6 +1,7 @@
 const { ListItem, List, Getting, GoInOn, ItemLink, sequelize } = require('../models'); // Adjust the path as per your project structure
 const { ApiError } = require('../middleware/errorHandler');
 const { Op } = require('sequelize');
+const NotificationService = require('./notificationService');
 
 class ListItemService {
     // Create a new list item
@@ -271,9 +272,10 @@ class ListItemService {
     }
 
     // Delete a list item by ID (soft delete)
-    static async deleteItem(id) {
+    static async deleteItem(id, deleterId = null) {
+        const transaction = await sequelize.transaction();
         try {
-            const item = await ListItem.findByPk(id);
+            const item = await ListItem.findByPk(id, { transaction });
             if (!item) {
                 throw new ApiError('ListItem not found', {
                     status: 404,
@@ -281,9 +283,17 @@ class ListItemService {
                     publicMessage: 'The list item you are trying to delete could not be found'
                 });
             }
-            await item.update({ deleted: true });
+
+            // Notify users who have marked this item as "gotten" before deleting
+            if (deleterId) {
+                await this.notifyUsersOfDeletedGottenItems([id], deleterId, transaction);
+            }
+
+            await item.update({ deleted: true }, { transaction });
+            await transaction.commit();
             return item;
         } catch (error) {
+            await transaction.rollback();
             console.error('Error deleting ListItem:', error);
             if (error instanceof ApiError) throw error;
 
@@ -597,6 +607,108 @@ class ListItemService {
                 errorType: 'DATABASE_ERROR',
                 publicMessage: 'Unable to search list items. Please try again.'
             });
+        }
+    }
+
+    /**
+     * Clean up expired list items where deleteOnDate has passed
+     * @returns {Promise<number>} Number of items cleaned up
+     */
+    static async cleanupExpiredItems() {
+        try {
+            const currentDate = new Date();
+            
+            // Find items where deleteOnDate is set and has passed, and not already deleted
+            const expiredItems = await ListItem.findAll({
+                where: {
+                    deleteOnDate: {
+                        [Op.lte]: currentDate,
+                        [Op.ne]: null
+                    },
+                    deleted: false
+                },
+                attributes: ['id', 'name', 'deleteOnDate']
+            });
+
+            if (expiredItems.length === 0) {
+                console.log('No expired items found for cleanup');
+                return 0;
+            }
+
+            console.log(`Found ${expiredItems.length} expired items to clean up`);
+
+            // Soft delete the expired items
+            const result = await ListItem.update(
+                { deleted: true },
+                {
+                    where: {
+                        id: {
+                            [Op.in]: expiredItems.map(item => item.id)
+                        }
+                    }
+                }
+            );
+
+            const cleanedCount = result[0];
+            console.log(`Successfully cleaned up ${cleanedCount} expired list items`);
+            
+            // Log details of cleaned items (for debugging/monitoring)
+            expiredItems.forEach(item => {
+                console.log(`Cleaned up item: ${item.name} (ID: ${item.id}, deleteOnDate: ${item.deleteOnDate})`);
+            });
+
+            return cleanedCount;
+        } catch (error) {
+            console.error('Error cleaning up expired list items:', error);
+            throw new ApiError('Failed to cleanup expired items', {
+                status: 500,
+                errorType: 'DATABASE_ERROR',
+                publicMessage: 'Unable to cleanup expired items. Please try again.'
+            });
+        }
+    }
+
+    // Helper function to notify users when items they've marked as "gotten" are deleted
+    static async notifyUsersOfDeletedGottenItems(itemIds, deleterId, transaction = null) {
+        try {
+            // Find all Getting records for the items being deleted
+            const gettingRecords = await Getting.findAll({
+                where: {
+                    itemId: { [Op.in]: itemIds }
+                },
+                include: [
+                    {
+                        model: ListItem,
+                        as: 'item',
+                        attributes: ['id', 'name']
+                    }
+                ],
+                transaction
+            });
+
+            // Filter out records where the giver is the same as the deleter (no self-notifications)
+            const recordsToNotify = gettingRecords.filter(record => record.giverId !== deleterId);
+
+            // Create notifications for each affected user
+            for (const record of recordsToNotify) {
+                const itemName = record.item ? record.item.name : 'Unknown item';
+                await NotificationService.createNotification({
+                    message: `An item you marked as 'gotten' has been deleted: ${itemName}`,
+                    notificationType: 'item_getting',
+                    metadata: {
+                        itemId: record.itemId,
+                        itemName: itemName,
+                        deletedBy: deleterId,
+                        giverId: record.giverId
+                    }
+                });
+            }
+
+            return recordsToNotify.length;
+        } catch (error) {
+            console.error('Error notifying users of deleted gotten items:', error);
+            // Don't throw - notifications are not critical to the delete operation
+            return 0;
         }
     }
 }

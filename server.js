@@ -9,12 +9,16 @@ if (!globalThis.fetch) {
 
 const app = require('./app');
 const models = require('./models');
+const SchedulerService = require('./services/schedulerService');
 const port = process.env.PORT || 3000;
 
 (async () => {
     try {
         await models.sequelize.sync({ alter: true });
         console.log('Database synchronized.');
+
+        // Initialize scheduled tasks
+        SchedulerService.init();
 
         app.listen(port, () => {
             console.log(`Server running at http://localhost:${port}`);
@@ -24,3 +28,16 @@ const port = process.env.PORT || 3000;
         process.exit(1);
     }
 })();
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+    console.log('Received SIGINT. Graceful shutdown...');
+    SchedulerService.stop();
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    console.log('Received SIGTERM. Graceful shutdown...');
+    SchedulerService.stop();
+    process.exit(0);
+});

@@ -86,7 +86,7 @@ exports.delete = async (req, res, next) => {
             PermissionService.throwPermissionError(permissionResult);
         }
 
-        const deletedItem = await ListItemService.deleteItem(id);
+        const deletedItem = await ListItemService.deleteItem(id, userId);
         res.status(200).json({
             success: true,
             data: deletedItem
@@ -248,49 +248,69 @@ exports.bulkDelete = async (req, res, next) => {
         }
 
         // Get all items and validate ownership
-        const ListItem = require('../models').ListItem;
-        const items = await ListItem.findAll({
-            where: {
-                id: { [require('sequelize').Op.in]: itemIds },
-                deleted: false
-            }
-        });
-
-        if (items.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'No valid items found'
-            });
-        }
-
-        // Check that user is the creator of all items
-        const unauthorizedItems = items.filter(item => item.createdById !== userId);
-        if (unauthorizedItems.length > 0) {
-            const unauthorizedIds = unauthorizedItems.map(item => item.id);
-            return res.status(403).json({
-                success: false,
-                message: `You do not have permission to delete items: ${unauthorizedIds.join(', ')}`
-            });
-        }
-
-        // Soft delete all items (set deleted: true)
-        const updatedCount = await ListItem.update(
-            { deleted: true },
-            {
+        const { ListItem, sequelize } = require('../models');
+        const { Op } = require('sequelize');
+        
+        const transaction = await sequelize.transaction();
+        try {
+            const items = await ListItem.findAll({
                 where: {
-                    id: { [require('sequelize').Op.in]: itemIds },
-                    createdById: userId,
+                    id: { [Op.in]: itemIds },
                     deleted: false
-                }
-            }
-        );
+                },
+                transaction
+            });
 
-        res.status(200).json({
-            success: true,
-            message: `Successfully deleted ${updatedCount[0]} items`,
-            deletedCount: updatedCount[0],
-            requestedIds: itemIds
-        });
+            if (items.length === 0) {
+                await transaction.rollback();
+                return res.status(404).json({
+                    success: false,
+                    message: 'No valid items found'
+                });
+            }
+
+            // Check that user is the creator of all items
+            const unauthorizedItems = items.filter(item => item.createdById !== userId);
+            if (unauthorizedItems.length > 0) {
+                await transaction.rollback();
+                const unauthorizedIds = unauthorizedItems.map(item => item.id);
+                return res.status(403).json({
+                    success: false,
+                    message: `You do not have permission to delete items: ${unauthorizedIds.join(', ')}`
+                });
+            }
+
+            // Get the IDs of items that will actually be deleted
+            const validItemIds = items.map(item => item.id);
+
+            // Notify users who have marked these items as "gotten" before deleting
+            await ListItemService.notifyUsersOfDeletedGottenItems(validItemIds, userId, transaction);
+
+            // Soft delete all items (set deleted: true)
+            const updatedCount = await ListItem.update(
+                { deleted: true },
+                {
+                    where: {
+                        id: { [Op.in]: validItemIds },
+                        createdById: userId,
+                        deleted: false
+                    },
+                    transaction
+                }
+            );
+
+            await transaction.commit();
+
+            res.status(200).json({
+                success: true,
+                message: `Successfully deleted ${updatedCount[0]} items`,
+                deletedCount: updatedCount[0],
+                requestedIds: itemIds
+            });
+        } catch (transactionError) {
+            await transaction.rollback();
+            throw transactionError;
+        }
     } catch (error) {
         next(error);
     }

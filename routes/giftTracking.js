@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateRoute } = require('../middleware/auth/authenticateRoute');
 const giftTrackingController = require('../controllers/giftTrackingController');
 const passport = require("passport");
 const groupController = require("../controllers/groupController");

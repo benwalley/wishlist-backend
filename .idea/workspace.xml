@@ -5,8 +5,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ac633e9b-c999-467f-b1d6-59c1a67c9c75" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/.env.example" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0/storage_v2/_src_/database/wishlist.xbVDxg/schema/public.abK9xQ.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0/storage_v2/_src_/database/wishlist.xbVDxg/schema/public.abK9xQ.meta" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/lists.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/lists.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/listItemController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/listItemController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/giftTracking.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/giftTracking.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server.js" beforeDir="false" afterPath="$PROJECT_DIR$/server.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/groupService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/groupService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/itemViewService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/itemViewService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/listItemService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listItemService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/listService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listService.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/services/permissionService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/permissionService.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -170,7 +181,9 @@
       <workItem from="1753829766696" duration="65000" />
       <workItem from="1753848445736" duration="866000" />
       <workItem from="1753913477680" duration="2755000" />
-      <workItem from="1754170210180" duration="4652000" />
+      <workItem from="1754170210180" duration="4910000" />
+      <workItem from="1754355857529" duration="9022000" />
+      <workItem from="1754437389335" duration="10032000" />
     </task>
     <servers />
   </component>

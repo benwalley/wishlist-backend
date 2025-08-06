@@ -1,6 +1,7 @@
 const { List, Group, ListItem, Getting, GoInOn, ItemLink, sequelize } = require('../models');
 const { Op } = require('sequelize'); // Import Op from Sequelize
 const ItemViewService = require('./itemViewService');
+const PermissionService = require('./permissionService');
 
 
 class ListService {
@@ -150,13 +151,14 @@ class ListService {
             if (!allowedToViewList) {
                 const userGroups = await Group.findAll({
                     where: {
-                        members: {
-                            [Op.contains]: [String(userId)]
-                        }
+                        [Op.or]: [
+                            { ownerId: userId },
+                            { members: { [Op.contains]: [userId] } },
+                            { adminIds: { [Op.contains]: [userId] } }
+                        ]
                     },
                     attributes: ['id']
                 });
-
                 const userGroupIds = userGroups.map(group => group.id);
 
                 allowedToViewList = list.visibleToGroups.some(groupId => userGroupIds.includes(groupId));
@@ -193,7 +195,6 @@ class ListService {
             });
 
             // Filter items based on visibility permissions
-            const PermissionService = require('./permissionService');
             const listItems = allListItems.filter(item =>
                 PermissionService.canUserViewItem(item, userId, allowedToViewList)
             );
