@@ -2,6 +2,7 @@
 // services/GroupService.js
 const { Group, User } = require('../models'); // Assumes your Sequelize model is named "Group"
 const { Op } = require('sequelize'); // Import Op from Sequelize
+const AccessCleanupService = require('./accessCleanupService');
 
 
 class GroupService {
@@ -147,6 +148,14 @@ class GroupService {
      */
     static async deleteGroup(id) {
         try {
+            // Clean up all sharing references to this group before deletion
+            try {
+                await AccessCleanupService.cleanupGroupDeletion(id);
+            } catch (cleanupError) {
+                console.error('Error during group deletion cleanup:', cleanupError);
+                // Continue with deletion even if cleanup fails
+            }
+            
             const deleted = await Group.destroy({ where: { id } });
             return deleted > 0;
         } catch (error) {
@@ -172,6 +181,15 @@ class GroupService {
 
         // Mark the group as deleted
         const updatedGroup = await this.updateGroup(groupId, { deleted: true });
+        
+        // Clean up all sharing references to this group
+        try {
+            await AccessCleanupService.cleanupGroupDeletion(groupId);
+        } catch (cleanupError) {
+            console.error('Error during group deletion cleanup:', cleanupError);
+            // Don't fail the group deletion due to cleanup errors
+        }
+        
         return updatedGroup;
     }
 
@@ -238,7 +256,31 @@ class GroupService {
 
             const members = group.members || [];
             const updatedMembers = members.filter((id) => id !== memberId);
-            await group.update({ members: updatedMembers });
+            
+            // Also remove from adminIds if present
+            const adminIds = group.adminIds || [];
+            const updatedAdminIds = adminIds.filter((id) => id !== memberId);
+            
+            await group.update({ 
+                members: updatedMembers,
+                adminIds: updatedAdminIds 
+            });
+            
+            // Find subusers of the removed member
+            const subusers = await User.findAll({
+                where: { parentId: memberId },
+                attributes: ['id']
+            });
+            const subuserIds = subusers.map(subuser => subuser.id);
+            
+            // Clean up access permissions for the removed member and their subusers
+            try {
+                await AccessCleanupService.cleanupUserGroupAccess(memberId, groupId, subuserIds);
+            } catch (cleanupError) {
+                console.error('Error during access cleanup after removing member:', cleanupError);
+                // Don't fail the member removal operation due to cleanup errors
+            }
+            
             return group;
         } catch (error) {
             throw new Error(`Failed to remove member: ${error.message}`);
@@ -631,6 +673,14 @@ class GroupService {
             adminIds: updatedAdminIds,
             invitedIds: updatedInvitedIds
         });
+
+        // Clean up access permissions for the leaving user and their subusers
+        try {
+            await AccessCleanupService.cleanupUserGroupAccess(userId, groupId, subuserIds);
+        } catch (cleanupError) {
+            console.error('Error during access cleanup after leaving group:', cleanupError);
+            // Don't fail the group leave operation due to cleanup errors
+        }
 
         return group;
     }

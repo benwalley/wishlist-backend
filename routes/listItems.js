@@ -1,6 +1,7 @@
 const express = require('express');
 const listItemController = require('../controllers/listItemController');
 const itemViewController = require('../controllers/itemViewController');
+const publicItemController = require('../controllers/publicItemController');
 const passport = require("passport");
 
 const router = express.Router();
@@ -22,6 +23,7 @@ router.get('/',  passport.authenticate('jwt', { session: false }), listItemContr
 router.get('/my-items',  passport.authenticate('jwt', { session: false }), listItemController.getMyItems);
 router.get('/search/:query',  passport.authenticate('jwt', { session: false }), listItemController.searchAccessibleItems);
 router.get('/orphaned',  passport.authenticate('jwt', { session: false }), listItemController.getNotInList);
+router.get('/public/:id', publicItemController.getPublicById);
 router.put('/:id',  passport.authenticate('jwt', { session: false }), listItemController.update);
 router.delete('/:id',  passport.authenticate('jwt', { session: false }), listItemController.delete);
 router.get('/:id',  passport.authenticate('jwt', { session: false }), listItemController.getById);

@@ -100,6 +100,50 @@ exports.getPublicUsers = async (req, res, next) => {
 };
 
 /**
+ * Get a specific public user by ID
+ * Returns user data only if the user has isPublic set to true
+ */
+exports.getPublicUserById = async (req, res, next) => {
+    try {
+        const targetUserId = parseInt(req.params.id);
+
+        if (isNaN(targetUserId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid user ID format'
+            });
+        }
+
+        const user = await models.User.findOne({
+            where: {
+                id: targetUserId,
+                isPublic: true,
+                isActive: true
+            },
+            attributes: { exclude: ['password'] }
+        });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found or not public'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: user
+        });
+    } catch (error) {
+        console.error('Error fetching public user by ID:', error);
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while fetching the user'
+        });
+    }
+};
+
+/**
  * Update a user's information
  */
 exports.updateUser = async (req, res, next) => {

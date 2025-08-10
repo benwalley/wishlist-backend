@@ -9,6 +9,7 @@ router.get('/yours', passport.authenticate('jwt', { session: false }), usersCont
 router.get('/accessible', passport.authenticate('jwt', { session: false }), usersController.getAccessibleUsers);
 router.get('/public', usersController.getPublicUsers);
 router.get('/subusers', passport.authenticate('jwt', { session: false }), usersController.getSubusers);
+router.get('/public/:id', usersController.getPublicUserById);
 router.put('/', passport.authenticate('jwt', { session: false }), usersController.updateUser);
 router.post('/save-note', passport.authenticate('jwt', { session: false }), usersController.saveNote);
 router.post('/subuser', passport.authenticate('jwt', { session: false }), usersController.createSubuser);

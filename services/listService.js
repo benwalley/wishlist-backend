@@ -553,7 +553,7 @@ class ListService {
 
             const userGroupIds = userGroups.map(group => group.id);
 
-            // Filter lists that the current user can access
+            // Filter lists that the current user can access, including public lists
             const accessibleLists = targetUserLists.filter(list => {
                 // Current user is the owner (same as target user)
                 if (String(list.ownerId) === String(currentUserId)) {
@@ -570,17 +570,56 @@ class ListService {
                     return true;
                 }
 
+                // Include public lists
+                if (list.public === true) {
+                    return true;
+                }
+
                 return false;
             });
 
-            // Add number of non-deleted items for each accessible list
+            // Helper function to check if user has full access to a list (not just public view)
+            const hasFullAccess = (list) => {
+                // Current user is the owner
+                if (String(list.ownerId) === String(currentUserId)) {
+                    return true;
+                }
+
+                // List is shared directly with current user
+                if (list.visibleToUsers && list.visibleToUsers.includes(String(currentUserId))) {
+                    return true;
+                }
+
+                // List is shared with a group the current user belongs to
+                if (list.visibleToGroups && list.visibleToGroups.some(groupId => userGroupIds.includes(groupId))) {
+                    return true;
+                }
+
+                return false;
+            };
+
+            // Add number of items for each accessible list (conditional counting)
             const listsWithCount = await Promise.all(accessibleLists.map(async (list) => {
-                const itemCount = await ListItem.count({
-                    where: {
-                        lists: { [Op.contains]: [list.id] },
-                        deleted: false
-                    }
-                });
+                let itemCount;
+                
+                // If user has full access to the list, count all non-deleted items
+                if (hasFullAccess(list)) {
+                    itemCount = await ListItem.count({
+                        where: {
+                            lists: { [Op.contains]: [list.id] },
+                            deleted: false
+                        }
+                    });
+                } else {
+                    // For public lists without full access, only count public items
+                    itemCount = await ListItem.count({
+                        where: {
+                            lists: { [Op.contains]: [list.id] },
+                            deleted: false,
+                            isPublic: true
+                        }
+                    });
+                }
 
                 return {
                     ...list.toJSON(),
