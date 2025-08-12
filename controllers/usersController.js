@@ -255,7 +255,8 @@ exports.getSubusers = async (req, res, next) => {
                 parentId: req.user.id,
                 isActive: true
             },
-            attributes: { exclude: ['password'] } // Exclude password from response
+            attributes: { exclude: ['password'] }, // Exclude password from response
+            order: [['createdAt', 'DESC']] // Sort by creation date, newest first
         });
 
         // Get groups for each subuser

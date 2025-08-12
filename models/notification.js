@@ -25,7 +25,7 @@ module.exports = (sequelize) => {
             allowNull: false,
             defaultValue: 'general',
             validate: {
-                isIn: [['general', 'group_invite', 'item_getting', 'item_comment', 'group_activity', 'list_shared', 'proposal', 'system']]
+                isIn: [['general', 'removed_from_group', 'question_asked', 'group_invite', 'someone_go_in_on', 'gotten_item_deleted', 'item_getting', 'item_comment', 'group_activity', 'list_shared', 'proposal', 'system', 'info', 'question_asked']]
             }
         },
         read: {

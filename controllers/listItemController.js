@@ -86,7 +86,7 @@ exports.delete = async (req, res, next) => {
             PermissionService.throwPermissionError(permissionResult);
         }
 
-        const deletedItem = await ListItemService.deleteItem(id, userId);
+        const deletedItem = await ListItemService.deleteItem(id);
         res.status(200).json({
             success: true,
             data: deletedItem
@@ -250,7 +250,7 @@ exports.bulkDelete = async (req, res, next) => {
         // Get all items and validate ownership
         const { ListItem, sequelize } = require('../models');
         const { Op } = require('sequelize');
-        
+
         const transaction = await sequelize.transaction();
         try {
             const items = await ListItem.findAll({

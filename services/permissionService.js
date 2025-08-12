@@ -128,15 +128,30 @@ class PermissionService {
                 };
             }
 
-            if (String(list.ownerId) !== String(userId)) {
-                return {
-                    canAccess: false,
-                    error: 'You do not have access to this list',
-                    errorType: 'UNAUTHORIZED'
-                };
+            // Check if user is the owner
+            if (String(list.ownerId) === String(userId)) {
+                return { canAccess: true, list };
             }
 
-            return { canAccess: true, list };
+            // Check if list is public
+            if (list.public === true) {
+                return { canAccess: true, list };
+            }
+
+            // Check if user is in visibleToUsers array
+            if (list.visibleToUsers && list.visibleToUsers.includes(String(userId))) {
+                return { canAccess: true, list };
+            }
+
+            // Check if user is in any group that has access to the list
+            // This would require group lookup - for now, return false
+            // TODO: Add group-based access check if needed
+
+            return {
+                canAccess: false,
+                error: 'You do not have access to this list',
+                errorType: 'UNAUTHORIZED'
+            };
         } catch (error) {
             console.error('Error checking list access:', error);
             return {

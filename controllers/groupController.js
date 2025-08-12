@@ -612,6 +612,92 @@ exports.declineInvitation = async (req, res) => {
 };
 
 /**
+ * Remove a member from a group
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+exports.removeMember = async (req, res) => {
+    try {
+        // Check if user is authenticated
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'User not authenticated.'
+            });
+        }
+
+        const userId = req.user.id;
+        const groupId = req.params.groupId;
+        const memberIdToRemove = req.params.memberId;
+
+        if (!memberIdToRemove) {
+            return res.status(400).json({
+                success: false,
+                message: 'Member ID is required.'
+            });
+        }
+
+        // Get group and verify access
+        const { group, access } = await GroupService.getGroupWithAccessCheck(groupId, userId);
+
+        // Only group owners and admins can remove members
+        if (!access.isOwner && !access.isAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: 'Only group owners and admins can remove members.'
+            });
+        }
+
+        // Check if the user to be removed is actually a member
+        const isMember = group.members && group.members.includes(Number(memberIdToRemove));
+        const isAdmin = group.adminIds && group.adminIds.includes(Number(memberIdToRemove));
+
+        if (!isMember && !isAdmin) {
+            return res.status(404).json({
+                success: false,
+                message: 'User is not a member of this group.'
+            });
+        }
+
+        // Call service method to remove the member
+        await GroupService.removeMember(groupId, Number(memberIdToRemove), userId);
+
+        res.json({
+            success: true,
+            message: 'Member removed successfully from the group.'
+        });
+    } catch (error) {
+        console.error('Error in removeMember:', error);
+
+        if (error.message === 'Group not found') {
+            return res.status(404).json({
+                success: false,
+                message: 'Group not found.'
+            });
+        }
+
+        if (error.message.includes('Access denied')) {
+            return res.status(403).json({
+                success: false,
+                message: error.message
+            });
+        }
+
+        if (error.message.includes('Cannot remove the owner')) {
+            return res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: 'Failed to remove member from group.'
+        });
+    }
+};
+
+/**
  * Bulk share lists and questions with a group
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object

@@ -3,6 +3,7 @@
 const { Group, User } = require('../models'); // Assumes your Sequelize model is named "Group"
 const { Op } = require('sequelize'); // Import Op from Sequelize
 const AccessCleanupService = require('./accessCleanupService');
+const NotificationService = require('./notificationService');
 
 
 class GroupService {
@@ -155,7 +156,7 @@ class GroupService {
                 console.error('Error during group deletion cleanup:', cleanupError);
                 // Continue with deletion even if cleanup fails
             }
-            
+
             const deleted = await Group.destroy({ where: { id } });
             return deleted > 0;
         } catch (error) {
@@ -181,7 +182,7 @@ class GroupService {
 
         // Mark the group as deleted
         const updatedGroup = await this.updateGroup(groupId, { deleted: true });
-        
+
         // Clean up all sharing references to this group
         try {
             await AccessCleanupService.cleanupGroupDeletion(groupId);
@@ -189,7 +190,7 @@ class GroupService {
             console.error('Error during group deletion cleanup:', cleanupError);
             // Don't fail the group deletion due to cleanup errors
         }
-        
+
         return updatedGroup;
     }
 
@@ -242,7 +243,7 @@ class GroupService {
      * @param {number} memberId - The ID of the member to remove.
      * @returns {Promise<Object>} The updated group.
      */
-    static async removeMember(groupId, memberId) {
+    static async removeMember(groupId, memberId, removingUserId) {
         try {
             const group = await Group.findByPk(groupId);
             if (!group) {
@@ -256,23 +257,33 @@ class GroupService {
 
             const members = group.members || [];
             const updatedMembers = members.filter((id) => id !== memberId);
-            
+
             // Also remove from adminIds if present
             const adminIds = group.adminIds || [];
             const updatedAdminIds = adminIds.filter((id) => id !== memberId);
-            
-            await group.update({ 
+
+            await group.update({
                 members: updatedMembers,
-                adminIds: updatedAdminIds 
+                adminIds: updatedAdminIds
             });
-            
+
+            // Send notification if user was removed by someone else
+            if (removingUserId && removingUserId !== memberId) {
+                try {
+                    await this.notifyUserRemovedFromGroup(memberId, removingUserId, group);
+                } catch (notificationError) {
+                    console.error('Error sending user removal notification:', notificationError);
+                    // Don't fail the operation due to notification errors
+                }
+            }
+
             // Find subusers of the removed member
             const subusers = await User.findAll({
                 where: { parentId: memberId },
                 attributes: ['id']
             });
             const subuserIds = subusers.map(subuser => subuser.id);
-            
+
             // Clean up access permissions for the removed member and their subusers
             try {
                 await AccessCleanupService.cleanupUserGroupAccess(memberId, groupId, subuserIds);
@@ -280,7 +291,7 @@ class GroupService {
                 console.error('Error during access cleanup after removing member:', cleanupError);
                 // Don't fail the member removal operation due to cleanup errors
             }
-            
+
             return group;
         } catch (error) {
             throw new Error(`Failed to remove member: ${error.message}`);
@@ -515,6 +526,10 @@ class GroupService {
 
             // Update the group with the new invitedIds array
             await this.updateGroup(groupId, { invitedIds: updatedInvitedIds });
+
+            // Send notification to the invited user
+            await this.notifyGroupInvitation(invitedUserId, invitingUserId, group);
+
             return true;
         } catch (error) {
             console.error('Error in inviteUserToGroup:', error);
@@ -550,6 +565,99 @@ class GroupService {
         }
 
         return memberIds;
+    }
+
+    /**
+     * Create notification for group invitation
+     * @param {number} invitedUserId - The ID of the user being invited
+     * @param {number} invitingUserId - The ID of the user sending the invitation
+     * @param {Object} group - The group object
+     * @returns {Promise<boolean>} True if notification was sent, false otherwise
+     */
+    static async notifyGroupInvitation(invitedUserId, invitingUserId, group) {
+        try {
+            // Check if invited user is active
+            const invitedUser = await User.findByPk(invitedUserId, {
+                attributes: ['isActive', 'name']
+            });
+
+            if (!invitedUser || !invitedUser.isActive) {
+                return false;
+            }
+
+            // Get the inviting user's name
+            const invitingUser = await User.findByPk(invitingUserId, {
+                attributes: ['name']
+            });
+
+            const inviterName = invitingUser?.name || 'Someone';
+            const groupName = group.groupName || 'Unknown group';
+
+            await NotificationService.createNotification({
+                message: `${inviterName} invited you to join ${groupName}`,
+                notificationType: 'group_invite',
+                metadata: {
+                    groupId: group.id,
+                    groupName: groupName,
+                    inviterId: invitingUserId,
+                    inviterName: inviterName
+                }
+            });
+
+            return true;
+        } catch (error) {
+            console.error('Error sending group invitation notification:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Create notification for user removed from group
+     * @param {number} removedUserId - The ID of the user being removed
+     * @param {number} removingUserId - The ID of the user doing the removal
+     * @param {Object} group - The group object
+     * @returns {Promise<boolean>} True if notification was sent, false otherwise
+     */
+    static async notifyUserRemovedFromGroup(removedUserId, removingUserId, group) {
+        try {
+            // Don't send notification if user removed themselves
+            if (removedUserId === removingUserId) {
+                return false;
+            }
+
+            // Check if removed user is active
+            const removedUser = await User.findByPk(removedUserId, {
+                attributes: ['isActive', 'name']
+            });
+
+            if (!removedUser || !removedUser.isActive) {
+                return false;
+            }
+
+            // Get the removing user's name
+            const removingUser = await User.findByPk(removingUserId, {
+                attributes: ['name']
+            });
+
+            const removerName = removingUser?.name || 'Someone';
+            const groupName = group.groupName || 'Unknown group';
+
+            await NotificationService.createNotification({
+                message: `${removerName} removed you from ${groupName}`,
+                notificationType: 'removed_from_group',
+                metadata: {
+                    groupId: group.id,
+                    groupName: groupName,
+                    removerId: removingUserId,
+                    removerName: removerName
+                }
+            });
+
+            return true;
+        } catch (error) {
+            console.error('Error sending group removal notification:', error);
+            return false;
+        }
     }
 
     /**

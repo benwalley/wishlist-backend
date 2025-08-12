@@ -1,5 +1,6 @@
 const { ListItem, Getting, GoInOn, sequelize, Proposal, User, Contributor, EventRecipient, Event } = require('../models');
 const UserService = require('./userService');
+const NotificationService = require('./notificationService');
 const { ApiError } = require('../middleware/errorHandler');
 const { Op } = require('sequelize');
 
@@ -310,7 +311,7 @@ class GiftTrackingService {
                     }
 
                     // Check if user has access to the event (owner or viewer)
-                    const hasAccess = recipient.event.ownerId === userId || 
+                    const hasAccess = recipient.event.ownerId === userId ||
                                      (recipient.event.viewerIds && recipient.event.viewerIds.includes(userId));
 
                     if (!hasAccess) {
@@ -352,7 +353,7 @@ class GiftTrackingService {
             const totalErrors = itemErrors.length + recipientErrors.length;
             const totalSuccesses = itemResults.length + recipientResults.length;
             const overallSuccess = totalErrors === 0;
-            
+
             let message = '';
             if (overallSuccess) {
                 message = `Successfully updated ${itemResults.length} items and ${recipientResults.length} recipients`;
@@ -677,6 +678,10 @@ class GiftTrackingService {
                             };
 
                             const newGoInOnRecord = await GoInOn.create(goInOnDataToSave, { transaction });
+
+                            // Notify existing participants that someone new wants to go in on this item
+                            await this.notifyGoInOnParticipants(itemId, giverId, getterId, transaction);
+
                             results.push({
                                 index: i,
                                 itemId,
@@ -847,6 +852,76 @@ class GiftTrackingService {
                 errorType: 'DATABASE_ERROR',
                 publicMessage: 'Unable to retrieve users without gifts. Please try again.'
             });
+        }
+    }
+
+    /**
+     * Create notifications for existing "go in on" participants when someone new joins
+     * @param {number} itemId - The ID of the item
+     * @param {number} newParticipantId - The ID of the user who just joined
+     * @param {number} getterId - The ID of the getter (recipient)
+     * @param {Object} transaction - Database transaction
+     */
+    static async notifyGoInOnParticipants(itemId, newParticipantId, getterId, transaction) {
+        try {
+            // Find all existing GoInOn records for this item (excluding the new participant)
+            const existingParticipants = await GoInOn.findAll({
+                where: {
+                    itemId,
+                    giverId: { [Op.ne]: newParticipantId }
+                },
+                include: [
+                    {
+                        model: ListItem,
+                        as: 'item',
+                        attributes: ['id', 'name']
+                    }
+                ],
+                transaction
+            });
+
+            if (existingParticipants.length === 0) {
+                // No existing participants to notify
+                return 0;
+            }
+
+            // Get the name of the user who just joined
+            const newParticipant = await User.findByPk(newParticipantId, {
+                attributes: ['name'],
+                transaction
+            });
+
+            // Get item details
+            const listItem = await ListItem.findByPk(itemId, {
+                attributes: ['name'],
+                transaction
+            });
+
+            const itemName = listItem?.name || 'Unknown item';
+            const participantName = newParticipant?.name || 'Someone';
+
+            // Create notifications for each existing participant
+            let notificationCount = 0;
+            for (const participant of existingParticipants) {
+                await NotificationService.createNotification({
+                    message: `${participantName} wants to go in on ${itemName}`,
+                    notificationType: 'someone_go_in_on',
+                    metadata: {
+                        itemId: itemId,
+                        itemName: itemName,
+                        newParticipantId: newParticipantId,
+                        newParticipantName: participantName,
+                        getterId: getterId
+                    }
+                });
+                notificationCount++;
+            }
+
+            return notificationCount;
+        } catch (error) {
+            console.error('Error notifying go-in-on participants:', error);
+            // Don't throw - notifications are not critical to the main operation
+            return 0;
         }
     }
 }

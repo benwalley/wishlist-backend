@@ -272,7 +272,7 @@ class ListItemService {
     }
 
     // Delete a list item by ID (soft delete)
-    static async deleteItem(id, deleterId = null) {
+    static async deleteItem(id) {
         const transaction = await sequelize.transaction();
         try {
             const item = await ListItem.findByPk(id, { transaction });
@@ -284,10 +284,7 @@ class ListItemService {
                 });
             }
 
-            // Notify users who have marked this item as "gotten" before deleting
-            if (deleterId) {
-                await this.notifyUsersOfDeletedGottenItems([id], deleterId, transaction);
-            }
+            await this.notifyUsersOfDeletedGottenItems([id], transaction);
 
             await item.update({ deleted: true }, { transaction });
             await transaction.commit();
@@ -617,7 +614,7 @@ class ListItemService {
     static async cleanupExpiredItems() {
         try {
             const currentDate = new Date();
-            
+
             // Find items where deleteOnDate is set and has passed, and not already deleted
             const expiredItems = await ListItem.findAll({
                 where: {
@@ -651,7 +648,7 @@ class ListItemService {
 
             const cleanedCount = result[0];
             console.log(`Successfully cleaned up ${cleanedCount} expired list items`);
-            
+
             // Log details of cleaned items (for debugging/monitoring)
             expiredItems.forEach(item => {
                 console.log(`Cleaned up item: ${item.name} (ID: ${item.id}, deleteOnDate: ${item.deleteOnDate})`);
@@ -669,10 +666,10 @@ class ListItemService {
     }
 
     // Helper function to notify users when items they've marked as "gotten" are deleted
-    static async notifyUsersOfDeletedGottenItems(itemIds, deleterId, transaction = null) {
+    static async notifyUsersOfDeletedGottenItems(itemIds, transaction = null) {
         try {
             // Find all Getting records for the items being deleted
-            const gettingRecords = await Getting.findAll({
+            const recordsToNotify = await Getting.findAll({
                 where: {
                     itemId: { [Op.in]: itemIds }
                 },
@@ -686,19 +683,15 @@ class ListItemService {
                 transaction
             });
 
-            // Filter out records where the giver is the same as the deleter (no self-notifications)
-            const recordsToNotify = gettingRecords.filter(record => record.giverId !== deleterId);
-
             // Create notifications for each affected user
             for (const record of recordsToNotify) {
                 const itemName = record.item ? record.item.name : 'Unknown item';
                 await NotificationService.createNotification({
                     message: `An item you marked as 'gotten' has been deleted: ${itemName}`,
-                    notificationType: 'item_getting',
+                    notificationType: 'gotten_item_deleted',
                     metadata: {
                         itemId: record.itemId,
                         itemName: itemName,
-                        deletedBy: deleterId,
                         giverId: record.giverId
                     }
                 });

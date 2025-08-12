@@ -1,5 +1,6 @@
 const { Question, Answer, User, Group } = require('../models');
 const { Op, Sequelize } = require('sequelize');
+const NotificationService = require('./notificationService');
 
 class QAService {
     /**
@@ -111,6 +112,9 @@ class QAService {
                 });
                 answers.push(answer);
             }
+
+            // Send notifications to users and groups (except the person who asked the question)
+            await this.sendQuestionNotifications(newQA, data.askedById);
 
             // Fetch the created question with its answers
             const qaWithAnswers = await Question.findByPk(newQA.id, {
@@ -282,6 +286,7 @@ class QAService {
     }
 
     // Get all questions accessible to a user (asked by them + shared with them + shared with their groups)
+    // This version only shows the current user's answers
     static async getAccessibleQAsByUserId(userId, userGroupIds = []) {
         try {
             // Convert userId to a number if it's a string
@@ -304,7 +309,11 @@ class QAService {
                 },
                 include: [{
                     model: Answer,
-                    as: 'answers'
+                    as: 'answers',
+                    where: {
+                        answererId: userIdNum
+                    },
+                    required: false // This ensures questions without user's answers are still included
                 }],
                 order: [['createdAt', 'DESC']]
             });
@@ -312,6 +321,41 @@ class QAService {
             return qasWithAnswers;
         } catch (error) {
             console.error('Error fetching accessible QAs by user ID:', error);
+            throw error;
+        }
+    }
+
+    // Get all questions accessible to a user with ALL answers (not just user's answers)
+    static async getAllAccessibleQAsByUserId(userId, userGroupIds = []) {
+        try {
+            // Convert userId to a number if it's a string
+            const userIdNum = parseInt(userId, 10);
+
+            const qasWithAnswers = await Question.findAll({
+                where: {
+                    [Op.or]: [
+                        // Questions asked by the user
+                        { askedById: userIdNum },
+                        
+                        // Questions where user is directly shared
+                        Sequelize.literal(`${userIdNum} = ANY("Question"."sharedWithUserIds")`),
+
+                        // Questions where any of user's groups are shared
+                        ...(userGroupIds.length > 0 ? [
+                            Sequelize.literal(`"Question"."sharedWithGroupIds" && ARRAY[${userGroupIds.join(',')}]::integer[]`)
+                        ] : [])
+                    ]
+                },
+                include: [{
+                    model: Answer,
+                    as: 'answers' // Include ALL answers, not filtered by user
+                }],
+                order: [['createdAt', 'DESC']]
+            });
+
+            return qasWithAnswers;
+        } catch (error) {
+            console.error('Error fetching all accessible QAs by user ID:', error);
             throw error;
         }
     }
@@ -465,6 +509,95 @@ class QAService {
         } catch (error) {
             console.error('Error force deleting QA:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Send notifications for a newly created question to users and groups
+     * @param {Object} question - The question object
+     * @param {number} askerId - The ID of the user who asked the question
+     * @returns {Promise<void>}
+     */
+    static async sendQuestionNotifications(question, askerId) {
+        try {
+            // Get the asker's name for the notification
+            const asker = await User.findByPk(askerId, {
+                attributes: ['name', 'isActive']
+            });
+
+            if (!asker || !asker.isActive) {
+                return;
+            }
+
+            const askerName = asker.name || 'Someone';
+            const questionText = question.questionText?.substring(0, 100) || 'New question';
+            const truncatedText = questionText.length > 100 ? questionText + '...' : questionText;
+
+            // Collect all users to notify (avoiding duplicates)
+            const usersToNotify = new Set();
+
+            // Add directly shared users (excluding the asker)
+            if (Array.isArray(question.sharedWithUserIds)) {
+                question.sharedWithUserIds.forEach(userId => {
+                    if (userId !== askerId) {
+                        usersToNotify.add(userId);
+                    }
+                });
+            }
+
+            // Add users from shared groups (excluding the asker)
+            if (Array.isArray(question.sharedWithGroupIds)) {
+                for (const groupId of question.sharedWithGroupIds) {
+                    try {
+                        const group = await Group.findByPk(groupId);
+                        if (group) {
+                            // Add all group members, admins, and owner
+                            const allMemberIds = [
+                                ...(group.members || []),
+                                ...(group.adminIds || []),
+                                group.ownerId
+                            ].filter(id => id && id !== askerId); // Exclude asker
+
+                            allMemberIds.forEach(userId => usersToNotify.add(userId));
+                        }
+                    } catch (groupError) {
+                        console.error(`Error fetching group ${groupId} for notifications:`, groupError);
+                    }
+                }
+            }
+
+            // Send notifications to all collected users
+            const notificationPromises = Array.from(usersToNotify).map(async (userId) => {
+                try {
+                    // Check if user is active before sending notification
+                    const user = await User.findByPk(userId, {
+                        attributes: ['isActive']
+                    });
+
+                    if (user && user.isActive) {
+                        await NotificationService.createNotification({
+                            message: `${askerName} asked you a question: "${truncatedText}"`,
+                            notificationType: 'question_asked',
+                            metadata: {
+                                questionId: question.id,
+                                askerId: askerId,
+                                askerName: askerName,
+                                questionText: truncatedText
+                            }
+                        });
+                    }
+                } catch (notificationError) {
+                    console.error(`Error sending notification to user ${userId}:`, notificationError);
+                    // Don't fail the entire operation for individual notification errors
+                }
+            });
+
+            await Promise.all(notificationPromises);
+            
+            console.log(`Sent question notifications to ${usersToNotify.size} users for question ${question.id}`);
+        } catch (error) {
+            console.error('Error sending question notifications:', error);
+            // Don't throw the error to avoid failing the question creation
         }
     }
 }

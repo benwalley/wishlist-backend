@@ -144,7 +144,7 @@ module.exports = {
                     message: 'userId is required.'
                 });
             }
-
+``
             // Get user's groups from the database
             const { Group } = require('../models');
             const { Op } = require('sequelize');
@@ -162,7 +162,7 @@ module.exports = {
 
             const groupIds = userGroups.map(group => group.id);
 
-            const qas = await QAService.getAccessibleQAsByUserId(userId, groupIds);
+            const qas = await QAService.getAllAccessibleQAsByUserId(userId, groupIds);
             return res.status(200).json({
                 success: true,
                 data: qas

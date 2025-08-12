@@ -37,6 +37,9 @@ router.post('/:groupId/leave', passport.authenticate('jwt', { session: false }),
 // Get group members route
 router.get('/:groupId/members', passport.authenticate('jwt', { session: false }), groupController.getGroupMembers);
 
+// Remove member from group route
+router.delete('/:groupId/members/:memberId', passport.authenticate('jwt', { session: false }), groupController.removeMember);
+
 // Create group route
 router.post('/create', passport.authenticate('jwt', { session: false }), groupController.addGroup);
 

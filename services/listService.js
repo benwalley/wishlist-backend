@@ -142,6 +142,11 @@ class ListService {
                 allowedToViewList = true;
             }
 
+            // Check if the list is public
+            if (list.public === true) {
+                allowedToViewList = true;
+            }
+
             // Check if the user is in the "visibleToUsers" array
             if (!allowedToViewList && list.visibleToUsers.includes(String(userId))) {
                 allowedToViewList = true;
@@ -684,7 +689,14 @@ class ListService {
                 }
             });
 
-            // 5. Combine all lists, removing duplicates
+            // 5. Get all public lists
+            const publicLists = await List.findAll({
+                where: {
+                    public: true
+                }
+            });
+
+            // 6. Combine all lists, removing duplicates
             const allLists = [...ownedLists];
 
             // Add shared directly lists if not already included
