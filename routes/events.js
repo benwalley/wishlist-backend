@@ -19,4 +19,7 @@ router.put('/:id', passport.authenticate('jwt', { session: false }), eventContro
 // Update event recipients
 router.put('/recipients/bulk', passport.authenticate('jwt', { session: false }), eventController.updateEventRecipients);
 
+// Save note for event recipient
+router.put('/:eventId/recipients/:recipientUserId/note', passport.authenticate('jwt', { session: false }), eventController.saveRecipientNote);
+
 module.exports = router;

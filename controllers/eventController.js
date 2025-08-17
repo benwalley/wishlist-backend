@@ -178,3 +178,47 @@ exports.updateEventRecipients = async (req, res) => {
         });
     }
 };
+
+/**
+ * Save note for an event recipient
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+exports.saveRecipientNote = async (req, res) => {
+    try {
+        if (!req.user?.id) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'User not authenticated.' 
+            });
+        }
+
+        const userId = req.user.id;
+        const { eventId, recipientUserId } = req.params;
+        const { note } = req.body;
+
+        if (!eventId || !recipientUserId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Event ID and recipient user ID are required.' 
+            });
+        }
+
+        if (note === undefined) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Note field is required.' 
+            });
+        }
+
+        const result = await EventService.saveRecipientNote(parseInt(eventId), parseInt(recipientUserId), note, userId);
+        
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Error in saveRecipientNote controller:', error);
+        res.status(error.status || 500).json({ 
+            success: false, 
+            message: error.message || 'Failed to save recipient note'
+        });
+    }
+};

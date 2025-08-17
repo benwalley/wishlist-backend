@@ -410,6 +410,73 @@ class EventService {
             });
         }
     }
+
+    /**
+     * Save note for a specific event recipient
+     * @param {number} eventId - Event ID
+     * @param {number} recipientUserId - Recipient user ID
+     * @param {string} note - Note to save
+     * @param {number} userId - Current user ID
+     * @returns {Promise<Object>} - Updated recipient with note
+     */
+    static async saveRecipientNote(eventId, recipientUserId, note, userId) {
+        const transaction = await sequelize.transaction();
+        try {
+            // Find the event recipient
+            const recipient = await EventRecipient.findOne({
+                where: {
+                    eventId: eventId,
+                    userId: recipientUserId
+                },
+                include: [{
+                    model: Event,
+                    as: 'event'
+                }],
+                transaction
+            });
+
+            if (!recipient) {
+                throw new ApiError('Event recipient not found', {
+                    status: 404,
+                    errorType: 'NOT_FOUND',
+                    publicMessage: 'The specified event recipient could not be found.'
+                });
+            }
+
+            // Check if user has access to the event (owner or viewer)
+            const hasAccess = recipient.event.ownerId === userId ||
+                             (recipient.event.viewerIds && recipient.event.viewerIds.includes(userId));
+
+            if (!hasAccess) {
+                throw new ApiError('Access denied', {
+                    status: 403,
+                    errorType: 'ACCESS_DENIED',
+                    publicMessage: 'You do not have permission to update this event recipient.'
+                });
+            }
+
+            // Update the note
+            await recipient.update({ note }, { transaction });
+
+            await transaction.commit();
+
+            return {
+                success: true,
+                message: 'Note saved successfully',
+                data: recipient.toJSON()
+            };
+        } catch (error) {
+            await transaction.rollback();
+            console.error('Error saving recipient note:', error);
+            if (error instanceof ApiError) throw error;
+
+            throw new ApiError('Failed to save recipient note', {
+                status: 500,
+                errorType: 'DATABASE_ERROR',
+                publicMessage: 'Unable to save the note. Please try again.'
+            });
+        }
+    }
 }
 
 module.exports = EventService;
