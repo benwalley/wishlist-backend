@@ -1,5 +1,6 @@
 const GeminiAIService = require('../../services/geminiAIService');
 const ImageService = require('../../services/imageService');
+const ImageProcessingService = require('../../services/imageProcessingService');
 
 exports.generateImage = async (req, res) => {
     try {
@@ -28,10 +29,13 @@ exports.generateImage = async (req, res) => {
         // Convert base64 to buffer
         const imageBuffer = Buffer.from(imageResult.imageData, 'base64');
         
+        // Compress the image using the same compression as other images
+        const compressedBuffer = await ImageProcessingService.makeSquareWithPadding(imageBuffer);
+        
         // Save to database
         const savedImage = await ImageService.saveImage(
-            imageBuffer,
-            imageResult.contentType,
+            compressedBuffer,
+            'image/jpeg', // Always JPEG after compression
             null, // recordId
             'generated_image', // recordType
             imageResult.metadata

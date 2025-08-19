@@ -314,11 +314,11 @@ Return only the JSON object, no additional text or explanation.`;
                     finalPrompt = `${prompt.trim()}, adorable and cute style, big expressive eyes, kawaii aesthetic, soft lighting, heartwarming expression, fluffy texture, charming and loveable`;
                 } else {
                     // Use predefined random animal prompts
-                    const animals = ['panda', 'kitten', 'puppy', 'bunny', 'fox', 'owl', 'hedgehog', 'koala', 'penguin', 'red panda'];
+                    const animals = require('../data/animals');
                     const styles = ['kawaii style', 'cute cartoon style', 'adorable illustration', 'soft pastel art style'];
                     const randomAnimal = animals[Math.floor(Math.random() * animals.length)];
                     const randomStyle = styles[Math.floor(Math.random() * styles.length)];
-                    finalPrompt = `Adorable baby ${randomAnimal} with big expressive eyes, ${randomStyle}, soft lighting, heartwarming expression, fluffy texture`;
+                    finalPrompt = `Adorable ${randomAnimal} with big expressive eyes, ${randomStyle}, soft lighting, heartwarming expression, fluffy texture`;
                 }
             } else if (imageType === 'custom' && (!prompt || prompt.trim().length === 0)) {
                 throw new ApiError('Custom image type requires a prompt', {
@@ -331,7 +331,7 @@ Return only the JSON object, no additional text or explanation.`;
             // Preprocess prompt for natural language
             if (imageType === 'custom') {
                 const cleanPrompt = prompt.trim().toLowerCase();
-                if (cleanPrompt.startsWith('create an image of') || 
+                if (cleanPrompt.startsWith('create an image of') ||
                     cleanPrompt.startsWith('generate an image of') ||
                     cleanPrompt.startsWith('make an image of')) {
                     finalPrompt = prompt.replace(/^(create an image of|generate an image of|make an image of)\s*/i, '');
@@ -351,7 +351,7 @@ Return only the JSON object, no additional text or explanation.`;
             // Create a direct HTTP request to the Gemini REST API for Imagen
             const fetch = require('node-fetch');
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-fast-generate-001:predict?key=${this.apiKey}`;
-            
+
             const requestBody = {
                 instances: [
                     {
@@ -386,7 +386,7 @@ Return only the JSON object, no additional text or explanation.`;
 
             const prediction = result.predictions[0];
             const imageBytes = prediction.bytesBase64Encoded;
-            
+
             if (!imageBytes) {
                 throw new Error('No image data received from API');
             }
