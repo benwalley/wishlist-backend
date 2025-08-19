@@ -6,9 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="ac633e9b-c999-467f-b1d6-59c1a67c9c75" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/eventController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/eventController.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/events.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/events.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/eventService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/eventService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/images/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/images/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/geminiAIService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/geminiAIService.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -21,7 +20,6 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="PhpDebugGeneral" listening_started="true" />
   <component name="PhpWorkspaceProjectConfiguration" interpreter_name="/opt/homebrew/Cellar/php/8.3.6/bin/php" />
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 5
@@ -177,7 +175,9 @@
       <workItem from="1754859533694" duration="2744000" />
       <workItem from="1754921968207" duration="19000" />
       <workItem from="1754959043616" duration="11301000" />
-      <workItem from="1755373270852" duration="4395000" />
+      <workItem from="1755373270852" duration="5679000" />
+      <workItem from="1755573699738" duration="4204000" />
+      <workItem from="1755622932427" duration="822000" />
     </task>
     <servers />
   </component>

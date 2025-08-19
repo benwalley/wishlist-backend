@@ -277,6 +277,158 @@ Return only the JSON object, no additional text or explanation.`;
             });
         }
     }
+
+    async generateImage(prompt, imageType = 'custom', options = {}) {
+        if (!this.apiKey) {
+            throw new ApiError('AI service not configured', {
+                status: 503,
+                errorType: 'AI_NOT_CONFIGURED',
+                publicMessage: 'AI service is not configured. Please contact administrator.'
+            });
+        }
+
+        const startTime = Date.now();
+        let finalPrompt = prompt;
+
+        try {
+            // Handle different image types
+            if (imageType === 'abstract') {
+                if (prompt && prompt.trim().length > 0) {
+                    // Use user prompt with abstract styling enhancements
+                    finalPrompt = `${prompt.trim()}, abstract art style, artistic composition, modern digital art, elegant flowing forms, sophisticated color palette, contemporary aesthetic`;
+                } else {
+                    // Use predefined random abstract prompts
+                    const abstractPrompts = [
+                        "Minimalist geometric abstract art with flowing curves and gradients in soft pastel colors, modern digital art style",
+                        "Abstract watercolor splash with vibrant blues and purples, elegant artistic composition with smooth flowing forms",
+                        "Elegant abstract pattern with golden ratio spirals, soft ambient lighting, contemporary art style with warm colors",
+                        "Fluid abstract design with organic shapes in teal and coral colors, sophisticated modern art aesthetic",
+                        "Abstract geometric composition with intersecting circles and triangles in muted earth tones, clean minimalist style",
+                        "Dreamy abstract cloudscape with soft gradients from pink to purple, ethereal and calming atmosphere"
+                    ];
+                    finalPrompt = abstractPrompts[Math.floor(Math.random() * abstractPrompts.length)];
+                }
+            } else if (imageType === 'animal') {
+                if (prompt && prompt.trim().length > 0) {
+                    // Use user prompt with cute/kawaii styling enhancements
+                    finalPrompt = `${prompt.trim()}, adorable and cute style, big expressive eyes, kawaii aesthetic, soft lighting, heartwarming expression, fluffy texture, charming and loveable`;
+                } else {
+                    // Use predefined random animal prompts
+                    const animals = ['panda', 'kitten', 'puppy', 'bunny', 'fox', 'owl', 'hedgehog', 'koala', 'penguin', 'red panda'];
+                    const styles = ['kawaii style', 'cute cartoon style', 'adorable illustration', 'soft pastel art style'];
+                    const randomAnimal = animals[Math.floor(Math.random() * animals.length)];
+                    const randomStyle = styles[Math.floor(Math.random() * styles.length)];
+                    finalPrompt = `Adorable baby ${randomAnimal} with big expressive eyes, ${randomStyle}, soft lighting, heartwarming expression, fluffy texture`;
+                }
+            } else if (imageType === 'custom' && (!prompt || prompt.trim().length === 0)) {
+                throw new ApiError('Custom image type requires a prompt', {
+                    status: 400,
+                    errorType: 'PROMPT_REQUIRED',
+                    publicMessage: 'A prompt is required for custom image generation'
+                });
+            }
+
+            // Preprocess prompt for natural language
+            if (imageType === 'custom') {
+                const cleanPrompt = prompt.trim().toLowerCase();
+                if (cleanPrompt.startsWith('create an image of') || 
+                    cleanPrompt.startsWith('generate an image of') ||
+                    cleanPrompt.startsWith('make an image of')) {
+                    finalPrompt = prompt.replace(/^(create an image of|generate an image of|make an image of)\s*/i, '');
+                } else {
+                    finalPrompt = prompt;
+                }
+            }
+
+            // Set default options for image generation
+            const defaultOptions = {
+                numberOfImages: 1,
+                aspectRatio: '1:1'
+            };
+
+            const mergedOptions = { ...defaultOptions, ...options };
+
+            // Create a direct HTTP request to the Gemini REST API for Imagen
+            const fetch = require('node-fetch');
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-fast-generate-001:predict?key=${this.apiKey}`;
+            
+            const requestBody = {
+                instances: [
+                    {
+                        prompt: finalPrompt
+                    }
+                ],
+                parameters: {
+                    sampleCount: mergedOptions.numberOfImages || 1,
+                    aspectRatio: mergedOptions.aspectRatio || '1:1'
+                }
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
+            }
+
+            const result = await response.json();
+            
+            // Extract image data from response
+            if (!result.predictions || result.predictions.length === 0) {
+                throw new Error('No images generated in response');
+            }
+
+            const prediction = result.predictions[0];
+            const imageBytes = prediction.bytesBase64Encoded;
+            
+            if (!imageBytes) {
+                throw new Error('No image data received from API');
+            }
+
+            const endTime = Date.now();
+            const responseTimeMs = endTime - startTime;
+
+            return {
+                imageData: imageBytes, // base64 encoded image
+                contentType: 'image/png',
+                metadata: {
+                    prompt: finalPrompt,
+                    imageType,
+                    model: 'imagen-4.0-fast-generate-001',
+                    responseTimeMs,
+                    generatedAt: new Date().toISOString()
+                }
+            };
+
+        } catch (error) {
+            const endTime = Date.now();
+            const responseTimeMs = endTime - startTime;
+
+            console.error('Error generating image:', error);
+
+            if (error instanceof ApiError) {
+                throw error;
+            }
+
+            throw new ApiError('Image generation failed', {
+                status: 500,
+                errorType: 'IMAGE_GENERATION_ERROR',
+                publicMessage: 'Failed to generate image. Please try again.',
+                metadata: {
+                    response_time_ms: responseTimeMs,
+                    original_error: error.message,
+                    prompt: finalPrompt,
+                    imageType
+                }
+            });
+        }
+    }
 }
 
 // Export singleton instance
