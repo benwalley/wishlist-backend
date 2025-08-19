@@ -373,8 +373,11 @@ Return only the JSON object, no additional text or explanation.`;
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(`API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
+                const responseText = await response.text();
+                console.error(`Gemini API Error - Status: ${response.status}, Response: ${responseText}`);
+                
+                const errorData = await response.json().catch(() => ({ rawResponse: responseText }));
+                throw new Error(`API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || 'Error translating server response to JSON'}`);
             }
 
             const result = await response.json();
