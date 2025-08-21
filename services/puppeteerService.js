@@ -55,12 +55,40 @@ class PuppeteerService {
                 ]
             };
 
+            // Debug environment variables
+            console.log(`[PUPPETEER] Environment debug:`);
+            console.log(`[PUPPETEER] - PUPPETEER_EXECUTABLE_PATH:`, process.env.PUPPETEER_EXECUTABLE_PATH);
+            console.log(`[PUPPETEER] - GOOGLE_CHROME_BIN:`, process.env.GOOGLE_CHROME_BIN);
+            console.log(`[PUPPETEER] - NODE_ENV:`, process.env.NODE_ENV);
+            console.log(`[PUPPETEER] - Current working directory:`, process.cwd());
+            
+            // Check if Chrome is installed via puppeteer
+            const fs = require('fs');
+            const path = require('path');
+            const cacheDir = process.env.PUPPETEER_CACHE_DIR || path.join(process.cwd(), '.cache', 'puppeteer');
+            console.log(`[PUPPETEER] - Checking cache directory:`, cacheDir);
+            
+            try {
+                if (fs.existsSync(cacheDir)) {
+                    const contents = fs.readdirSync(cacheDir, { recursive: true });
+                    console.log(`[PUPPETEER] - Cache directory contents:`, contents.slice(0, 10)); // First 10 items
+                } else {
+                    console.log(`[PUPPETEER] - Cache directory does not exist`);
+                }
+            } catch (error) {
+                console.log(`[PUPPETEER] - Error reading cache directory:`, error.message);
+            }
+
             // Set executable path based on environment
             if (process.env.PUPPETEER_EXECUTABLE_PATH) {
                 launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+                console.log(`[PUPPETEER] - Using custom executable path:`, launchOptions.executablePath);
             } else if (process.env.GOOGLE_CHROME_BIN) {
                 // Use Google Chrome provided by Heroku buildpack
                 launchOptions.executablePath = process.env.GOOGLE_CHROME_BIN;
+                console.log(`[PUPPETEER] - Using Chrome from buildpack:`, launchOptions.executablePath);
+            } else {
+                console.log(`[PUPPETEER] - No executable path set, Puppeteer will try to find Chrome automatically`);
             }
             
             console.log(`[PUPPETEER] Launch options:`, launchOptions);
