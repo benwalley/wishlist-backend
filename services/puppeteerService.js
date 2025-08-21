@@ -55,9 +55,12 @@ class PuppeteerService {
                 ]
             };
 
-            // Only set executablePath if explicitly provided in environment
+            // Set executable path based on environment
             if (process.env.PUPPETEER_EXECUTABLE_PATH) {
                 launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+            } else if (process.env.GOOGLE_CHROME_BIN) {
+                // Use Google Chrome provided by Heroku buildpack
+                launchOptions.executablePath = process.env.GOOGLE_CHROME_BIN;
             }
             
             console.log(`[PUPPETEER] Launch options:`, launchOptions);
