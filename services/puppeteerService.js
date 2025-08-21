@@ -87,6 +87,10 @@ class PuppeteerService {
                 // Use Google Chrome provided by Heroku buildpack
                 launchOptions.executablePath = process.env.GOOGLE_CHROME_BIN;
                 console.log(`[PUPPETEER] - Using Chrome from buildpack:`, launchOptions.executablePath);
+            } else if (process.env.CHROME_BIN) {
+                // Alternative Chrome path from buildpack
+                launchOptions.executablePath = process.env.CHROME_BIN;
+                console.log(`[PUPPETEER] - Using Chrome from CHROME_BIN:`, launchOptions.executablePath);
             } else {
                 console.log(`[PUPPETEER] - No executable path set, Puppeteer will try to find Chrome automatically`);
             }

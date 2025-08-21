@@ -4,7 +4,7 @@
     "dev": "nodemon server.js",
     "debug": "node --inspect=0.0.0.0:9229 server.js",
     "debug-dev": "nodemon --inspect=0.0.0.0:9229 server.js",
-    "postinstall": "npx puppeteer browsers install chrome"
+    "install-chrome": "npx puppeteer browsers install chrome"
   },
   "dependencies": {
     "@aws-sdk/client-sesv2": "^3.846.0",
