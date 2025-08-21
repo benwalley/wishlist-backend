@@ -12,5 +12,7 @@ router.post('/save', passport.authenticate('jwt', { session: false }), giftTrack
 router.post('/bulkSave', passport.authenticate('jwt', { session: false }), giftTrackingController.bulkSaveGiftTracking);
 router.post('/bulkUpdateGetting', passport.authenticate('jwt', { session: false }), giftTrackingController.bulkUpdateGetting);
 router.post('/bulkUpdateGoInOn', passport.authenticate('jwt', { session: false }), giftTrackingController.bulkUpdateGoInOn);
+router.delete('/getting/:gettingId', passport.authenticate('jwt', { session: false }), giftTrackingController.deleteGetting);
+router.delete('/goInOn/:itemId', passport.authenticate('jwt', { session: false }), giftTrackingController.deleteGoInOn);
 
 module.exports = router;

@@ -924,6 +924,105 @@ class GiftTrackingService {
             return 0;
         }
     }
+
+    /**
+     * Delete a getting record by ID
+     * @param {number} gettingId - The ID of the getting record to delete
+     * @param {number} currentUserId - The ID of the authenticated user
+     * @returns {Object} Success response
+     */
+    static async deleteGetting(gettingId, currentUserId) {
+        const transaction = await sequelize.transaction();
+        try {
+            // Find the getting record
+            const gettingRecord = await Getting.findByPk(gettingId, { transaction });
+
+            if (!gettingRecord) {
+                throw new ApiError('Getting record not found', {
+                    status: 404,
+                    errorType: 'NOT_FOUND',
+                    publicMessage: 'The getting record could not be found'
+                });
+            }
+
+            // Check if the current user is the giver (owner of this getting record)
+            if (gettingRecord.giverId !== currentUserId) {
+                throw new ApiError('Access denied', {
+                    status: 403,
+                    errorType: 'ACCESS_DENIED',
+                    publicMessage: 'You do not have permission to delete this getting record'
+                });
+            }
+
+            // Delete the getting record
+            await gettingRecord.destroy({ transaction });
+
+            await transaction.commit();
+
+            return {
+                success: true,
+                message: 'Getting record deleted successfully'
+            };
+        } catch (error) {
+            await transaction.rollback();
+            console.error('Error deleting getting record:', error);
+            if (error instanceof ApiError) throw error;
+
+            throw new ApiError('Failed to delete getting record', {
+                status: 500,
+                errorType: 'DATABASE_ERROR',
+                publicMessage: 'Unable to delete the getting record. Please try again.'
+            });
+        }
+    }
+
+    /**
+     * Delete a go-in-on record by item ID for the current user
+     * @param {number} itemId - The ID of the item
+     * @param {number} currentUserId - The ID of the authenticated user
+     * @returns {Object} Success response
+     */
+    static async deleteGoInOn(itemId, currentUserId) {
+        const transaction = await sequelize.transaction();
+        try {
+            // Find the go-in-on record for this user and item
+            const goInOnRecord = await GoInOn.findOne({
+                where: {
+                    itemId: itemId,
+                    giverId: currentUserId
+                },
+                transaction
+            });
+
+            if (!goInOnRecord) {
+                throw new ApiError('Go-in-on record not found', {
+                    status: 404,
+                    errorType: 'NOT_FOUND',
+                    publicMessage: 'You are not participating in this go-in-on for this item'
+                });
+            }
+
+            // Delete the go-in-on record
+            await goInOnRecord.destroy({ transaction });
+
+            await transaction.commit();
+
+            return {
+                success: true,
+                message: 'Successfully removed from go-in-on'
+            };
+        } catch (error) {
+            await transaction.rollback();
+            console.error('Error deleting go-in-on record:', error);
+            if (error instanceof ApiError) throw error;
+
+            throw new ApiError('Failed to delete go-in-on record', {
+                status: 500,
+                errorType: 'DATABASE_ERROR',
+                publicMessage: 'Unable to remove from go-in-on. Please try again.'
+            });
+        }
+    }
 }
 
 module.exports = GiftTrackingService;

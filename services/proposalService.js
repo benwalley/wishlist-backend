@@ -516,7 +516,9 @@ class ProposalService {
                         getterId: getterId,
                         itemId: proposal.itemId,
                         proposalId: proposal.id,
-                        status: 'none'
+                        status: 'none',
+                        numberGetting: 1,
+                        actualPrice: 0
                     }, { transaction });
                 }
             }

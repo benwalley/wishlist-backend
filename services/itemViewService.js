@@ -1,6 +1,5 @@
 const { ItemView } = require('../models');
 const { ApiError } = require('../middleware/errorHandler');
-const UserService = require('./userService');
 const PermissionService = require('./permissionService');
 
 class ItemViewService {
@@ -228,43 +227,46 @@ class ItemViewService {
      */
     static async getUnviewedItemsCountForList(userId, listId) {
         try {
-            const { QueryTypes } = require('sequelize');
-            const { sequelize } = require('../models');
-
-            // Get user's group memberships
-            const userGroups = await UserService.getUserGroups(userId);
-            const userGroupIds = userGroups.map(group => group.id);
+            const { ListItem, ItemView } = require('../models');
+            const { Op } = require('sequelize');
 
             // Check if user has access to the list (for matchListVisibility logic)
             const listAccess = await PermissionService.canUserAccessList(userId, listId);
             const hasListAccess = listAccess.canAccess;
 
-            // Query to get count of items in the list that user hasn't viewed AND can view
-            const result = await sequelize.query(`
-                SELECT COUNT(*) as unviewed_count
-                FROM list_items li
-                LEFT JOIN item_views iv ON li.id = iv.item_id AND iv.user_id = :userId
-                WHERE li.lists @> ARRAY[:listId]::integer[]
-                AND li.deleted = false
-                AND iv.item_id IS NULL
-                AND (
-                    li."isPublic" = true
-                    OR li."createdById" = :userId
-                    OR (li."visibleToUsers" IS NOT NULL AND :userId = ANY(li."visibleToUsers"))
-                    OR (li."matchListVisibility" = true AND :hasListAccess = true)
-                    OR (li."visibleToGroups" IS NOT NULL AND li."visibleToGroups" && ARRAY[:userGroupIds]::integer[])
-                )
-            `, {
-                replacements: { 
-                    userId, 
-                    listId, 
-                    hasListAccess,
-                    userGroupIds: userGroupIds.length > 0 ? userGroupIds : [0] // Use [0] if empty to avoid SQL errors
-                },
-                type: QueryTypes.SELECT
+            // Get all items in the list that are not deleted
+            const itemsInList = await ListItem.findAll({
+                where: {
+                    lists: {
+                        [Op.contains]: [listId]
+                    },
+                    deleted: false
+                }
             });
 
-            return parseInt(result[0].unviewed_count) || 0;
+            // Get all item views for this user
+            const viewedItemIds = await ItemView.findAll({
+                where: {
+                    user_id: userId
+                },
+                attributes: ['item_id']
+            }).then(views => views.map(view => view.dataValues.item_id));
+
+            // Filter items that user can view and hasn't viewed yet
+            let unviewedCount = 0;
+            for (const item of itemsInList) {
+                // Skip if user has already viewed this item
+                if (viewedItemIds.includes(item.id)) {
+                    continue;
+                }
+
+                // Use existing permission logic to check if user can view the item
+                if (PermissionService.canUserViewItem(item, userId, hasListAccess)) {
+                    unviewedCount++;
+                }
+            }
+
+            return unviewedCount;
         } catch (error) {
             console.error('Error getting unviewed items count for list:', error);
             return 0;

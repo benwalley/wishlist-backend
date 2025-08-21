@@ -98,7 +98,7 @@ exports.getAll = async (req, res, next) => {
 exports.getApproved = async (req, res, next) => {
     try {
         const proposals = await ProposalService.getApprovedProposals();
-        
+
         res.status(200).json({
             success: true,
             data: proposals
@@ -257,14 +257,12 @@ exports.updateMyResponse = async (req, res, next) => {
 exports.acceptProposal = async (req, res, next) => {
     try {
         const { proposalId } = req.params;
-        const { isBuying } = req.body;
         const userId = req.user.id;
 
         const updatedResponse = await ProposalService.updateProposalResponse(
             proposalId,
             userId,
             true, // accepted = true
-            isBuying || false
         );
 
         res.status(200).json({

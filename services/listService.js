@@ -2,6 +2,7 @@ const { List, Group, ListItem, Getting, GoInOn, ItemLink, sequelize } = require(
 const { Op } = require('sequelize'); // Import Op from Sequelize
 const ItemViewService = require('./itemViewService');
 const PermissionService = require('./permissionService');
+const UserService = require('./userService');
 
 
 class ListService {
@@ -689,10 +690,18 @@ class ListService {
                 }
             });
 
-            // 5. Get all public lists
-            const publicLists = await List.findAll({
+            // 5. Get accessible users and their public lists
+            const accessibleUsers = await UserService.getAccessibleUsers(userId);
+            const accessibleUserIds = accessibleUsers.map(user => user.id);
+            
+            // Get public lists owned by accessible users (excluding current user's own lists)
+            const publicListsByAccessibleUsers = await List.findAll({
                 where: {
-                    public: true
+                    public: true,
+                    ownerId: { 
+                        [Op.in]: accessibleUserIds, 
+                        [Op.ne]: String(userId) 
+                    }
                 }
             });
 
@@ -713,15 +722,17 @@ class ListService {
                 }
             });
 
-            // Add number of non-deleted items and unviewed items count for each list
-            const listsWithCount = await Promise.all(allLists.map(async (list) => {
-                const itemCount = await ListItem.count({
-                    where: {
-                        lists: { [Op.contains]: [list.id] },
-                        deleted: false
-                    }
-                });
+            // Add public lists from accessible users if not already included
+            publicListsByAccessibleUsers.forEach(list => {
+                if (!allLists.some(l => l.id === list.id)) {
+                    allLists.push(list);
+                }
+            });
 
+            // Add number of viewable items and unviewed items count for each list
+            const listsWithCount = await Promise.all(allLists.map(async (list) => {
+                // Get count of items the user can actually view
+                const itemCount = await this.getViewableItemsCountForList(userId, list.id);
                 const unviewedItemsCount = await ItemViewService.getUnviewedItemsCountForList(userId, list.id);
 
                 return {
@@ -742,6 +753,46 @@ class ListService {
                 message: 'An error occurred while fetching accessible lists',
                 error: error.message
             };
+        }
+    }
+
+    /**
+     * Get count of items in a list that a user can view
+     * @param {number} userId - ID of the user
+     * @param {number} listId - ID of the list
+     * @returns {Promise<number>} - Number of viewable items in the list
+     */
+    async getViewableItemsCountForList(userId, listId) {
+        try {
+            const { Op } = require('sequelize');
+
+            // Check if user has access to the list (for matchListVisibility logic)
+            const listAccess = await PermissionService.canUserAccessList(userId, listId);
+            const hasListAccess = listAccess.canAccess;
+
+            // Get all items in the list that are not deleted
+            const itemsInList = await ListItem.findAll({
+                where: {
+                    lists: {
+                        [Op.contains]: [listId]
+                    },
+                    deleted: false
+                }
+            });
+
+            // Filter items that user can view
+            let viewableCount = 0;
+            for (const item of itemsInList) {
+                // Use existing permission logic to check if user can view the item
+                if (PermissionService.canUserViewItem(item, userId, hasListAccess)) {
+                    viewableCount++;
+                }
+            }
+
+            return viewableCount;
+        } catch (error) {
+            console.error('Error getting viewable items count for list:', error);
+            return 0;
         }
     }
 }

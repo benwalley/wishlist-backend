@@ -1,4 +1,4 @@
-const { Event, EventRecipient, Getting, GoInOn, Proposal, ProposalParticipant, ListItem, sequelize } = require('../models');
+const { Event, EventRecipient, Getting, GoInOn, Proposal, ProposalParticipant, ListItem, User, sequelize } = require('../models');
 const { ApiError } = require('../middleware/errorHandler');
 const { Op } = require('sequelize');
 
@@ -111,17 +111,106 @@ class EventService {
                                 }
                                 gettingData.item = itemData
                             }
+
+                            // Find buyer status if there's a proposal
+                            if (gettingData.proposal && gettingData.proposal.proposalParticipants) {
+                                const buyerParticipant = gettingData.proposal.proposalParticipants.find(
+                                    participant => participant.isBuying === true
+                                );
+
+                                console.log("the buyerParticipant", buyerParticipant);
+                                if (buyerParticipant) {
+                                    // Get buyer's getting record for the same proposal
+                                    const buyerGetting = await Getting.findOne({
+                                        where: {
+                                            giverId: buyerParticipant.userId,
+                                            proposalId: gettingData.proposalId,
+                                            itemId: gettingData.itemId
+                                        }
+                                    });
+
+                                    console.log('fetched the user', buyerGetting);
+                                    gettingData.buyerStatus = buyerGetting ? buyerGetting.status : null;
+                                }
+                            }
+
                             return gettingData;
                         })
                     );
 
-                    // Get all go_in_on records for this recipient
+                    // Get all go_in_on records for this recipient with item details
                     const goInOnRecords = await GoInOn.findAll({
-                        where: { getterId: recipient.userId }
+                        where: {
+                            giverId: userId,
+                            getterId: recipient.userId
+                        },
+                        include: [
+                            {
+                                model: ListItem,
+                                as: 'item',
+                                attributes: ['id', 'name']
+                            }
+                        ]
                     });
 
+                    // Enhance each goInOn record with other people who want the same item and proposal info
+                    const enhancedGoInOnRecords = await Promise.all(
+                        goInOnRecords.map(async (goInOn) => {
+                            const goInOnData = goInOn.toJSON();
+
+                            // Add itemName for easy access
+                            goInOnData.itemName = goInOnData.item ? goInOnData.item.name : '';
+
+                            // Find all other people who want to go in on the same item
+                            const otherPeopleGoInOn = await GoInOn.findAll({
+                                where: {
+                                    itemId: goInOn.itemId,
+                                    giverId: { [Op.ne]: userId } // Exclude the current user
+                                },
+                                include: [
+                                    {
+                                        model: User,
+                                        as: 'giver',
+                                        attributes: ['id', 'name', 'image']
+                                    }
+                                ]
+                            });
+
+                            // Extract the list of other people (givers)
+                            goInOnData.otherPeople = otherPeopleGoInOn.map(record => ({
+                                userId: record.giverId,
+                                name: record.giver ? record.giver.name : 'Unknown User'
+                            }));
+
+                            // Check if there are existing proposals for this item that the user is part of
+                            const proposals = await Proposal.findAll({
+                                where: {
+                                    itemId: goInOnData.itemId,
+                                    deleted: false
+                                },
+                                include: [
+                                    {
+                                        model: ProposalParticipant,
+                                        as: 'proposalParticipants',
+                                        required: true
+                                    }
+                                ]
+                            });
+
+                            // Filter proposals to only include ones where the current user is a participant
+                            const userProposals = proposals.filter(proposal =>
+                                proposal.proposalParticipants.some(participant => participant.userId === userId)
+                            );
+
+                            // Return all proposals where user is a participant as an array
+                            goInOnData.proposals = userProposals.map(proposal => proposal.toJSON());
+
+                            return goInOnData;
+                        })
+                    );
+
                     recipientData.getting = gettingRecordsWithItems;
-                    recipientData.goInOn = goInOnRecords;
+                    recipientData.goInOn = enhancedGoInOnRecords;
 
                     return recipientData;
                 })
@@ -158,10 +247,13 @@ class EventService {
         try {
             const { name, dueDate, viewerIds = [], archived = false } = eventData;
 
+            // Convert invalid dates to null
+            const cleanDueDate = (dueDate && dueDate !== 'Invalid date') ? dueDate : null;
+
             // Create the event
             const newEvent = await Event.create({
                 name,
-                dueDate,
+                dueDate: cleanDueDate,
                 ownerId,
                 viewerIds,
                 archived
@@ -241,7 +333,9 @@ class EventService {
             const { name, dueDate, viewerIds, archived } = eventData;
             const updateData = {};
             if (name !== undefined) updateData.name = name;
-            if (dueDate !== undefined) updateData.dueDate = dueDate;
+            if (dueDate !== undefined) {
+                updateData.dueDate = (dueDate && dueDate !== 'Invalid date') ? dueDate : null;
+            }
             if (viewerIds !== undefined) updateData.viewerIds = viewerIds;
             if (archived !== undefined) updateData.archived = archived;
 

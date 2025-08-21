@@ -6,7 +6,17 @@
   <component name="ChangeListManager">
     <list default="true" id="ac633e9b-c999-467f-b1d6-59c1a67c9c75" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/geminiAIService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/geminiAIService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/giftTrackingController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/giftTrackingController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/proposalController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/proposalController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/getting.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/getting.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/goInOn.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/goInOn.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/giftTracking.js" beforeDir="false" afterPath="$PROJECT_DIR$/routes/giftTracking.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/eventService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/eventService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/giftTrackingService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/giftTrackingService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/itemViewService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/itemViewService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/listService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/proposalService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/proposalService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/userService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/userService.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -177,7 +187,9 @@
       <workItem from="1755373270852" duration="5679000" />
       <workItem from="1755573699738" duration="4204000" />
       <workItem from="1755622932427" duration="1402000" />
-      <workItem from="1755627402861" duration="3797000" />
+      <workItem from="1755627402861" duration="8018000" />
+      <workItem from="1755645141984" duration="11271000" />
+      <workItem from="1755723158600" duration="7224000" />
     </task>
     <servers />
   </component>

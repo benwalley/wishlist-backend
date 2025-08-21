@@ -5,6 +5,8 @@ module.exports = (sequelize) => {
     class GoInOn extends Model {
         static associate(models) {
             this.belongsTo(models.ListItem, { foreignKey: 'itemId', as: 'item' });
+            this.belongsTo(models.User, { foreignKey: 'getterId', as: 'getter' });
+            this.belongsTo(models.User, { foreignKey: 'giverId', as: 'giver' });
         }
     }
 

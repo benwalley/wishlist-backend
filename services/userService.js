@@ -4,7 +4,6 @@ const models = require('../models');
 const { User, RefreshToken, Group, List } = models;
 const { Op } = require('sequelize');
 const { ApiError } = require('../middleware/errorHandler');
-const listService = require('./listService');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET;
@@ -66,6 +65,7 @@ class UserService {
             });
 
             // Create a default list for the user
+            const listService = require('./listService');
             await listService.createList({
                 ownerId: newUser.id,
                 listName: username,
@@ -118,6 +118,7 @@ class UserService {
         });
 
         // Create a default list for the placeholder user
+        const listService = require('./listService');
         await listService.createList({
             ownerId: user.id,
             listName: userName,

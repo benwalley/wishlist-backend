@@ -246,6 +246,80 @@ async function bulkUpdateGoInOn(req, res, next) {
     }
 }
 
+/**
+ * Delete a getting record by ID
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+async function deleteGetting(req, res, next) {
+    try {
+        const currentUserId = req.user.id;
+        const { gettingId } = req.params;
+
+        if (!gettingId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Getting ID is required'
+            });
+        }
+
+        const result = await GiftTrackingService.deleteGetting(gettingId, currentUserId);
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error('Error in deleteGetting controller:', error);
+
+        // If error is already formatted by the service, pass it on
+        if (error.statusCode || error.message) {
+            next(error);
+        } else {
+            // Otherwise format it properly with the success structure
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to delete getting record'
+            });
+        }
+    }
+}
+
+/**
+ * Delete a go-in-on record by item ID
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+async function deleteGoInOn(req, res, next) {
+    try {
+        const currentUserId = req.user.id;
+        const { itemId } = req.params;
+
+        if (!itemId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Item ID is required'
+            });
+        }
+
+        const result = await GiftTrackingService.deleteGoInOn(itemId, currentUserId);
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error('Error in deleteGoInOn controller:', error);
+
+        // If error is already formatted by the service, pass it on
+        if (error.statusCode || error.message) {
+            next(error);
+        } else {
+            // Otherwise format it properly with the success structure
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to delete go-in-on record'
+            });
+        }
+    }
+}
+
 module.exports = {
     getTrackedGifts,
     saveGiftTracking,
@@ -253,5 +327,7 @@ module.exports = {
     bulkSaveGiftTracking,
     getUsersWithoutGifts,
     bulkUpdateGetting,
-    bulkUpdateGoInOn
+    bulkUpdateGoInOn,
+    deleteGetting,
+    deleteGoInOn
 };
