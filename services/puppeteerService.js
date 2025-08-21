@@ -38,7 +38,6 @@ class PuppeteerService {
         try {
             const launchOptions = {
                 headless: 'new',
-                executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
@@ -55,6 +54,11 @@ class PuppeteerService {
                     '--single-process'
                 ]
             };
+
+            // Only set executablePath if explicitly provided in environment
+            if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+                launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+            }
             
             console.log(`[PUPPETEER] Launch options:`, launchOptions);
             this.browser = await puppeteer.launch(launchOptions);
