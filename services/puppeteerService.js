@@ -47,8 +47,44 @@ class PuppeteerService {
             console.log(`[PUPPETEER] - Is Docker:`, isDocker);
             console.log(`[PUPPETEER] - Current working directory:`, process.cwd());
 
+            // Determine Chrome executable path for production
+            let chromeExecPath = 'chrome';
+            if (isProd) {
+                if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+                    chromeExecPath = process.env.PUPPETEER_EXECUTABLE_PATH;
+                } else if (process.env.GOOGLE_CHROME_BIN) {
+                    chromeExecPath = process.env.GOOGLE_CHROME_BIN;
+                } else if (process.env.CHROME_BIN) {
+                    chromeExecPath = process.env.CHROME_BIN;
+                } else {
+                    // Try common buildpack paths
+                    const fs = require('fs');
+                    const possiblePaths = [
+                        'chrome',
+                        '/app/.chrome-for-testing/chrome-linux64/chrome',
+                        '/usr/bin/google-chrome-stable',
+                        '/usr/bin/chromium-browser'
+                    ];
+                    
+                    for (const path of possiblePaths) {
+                        try {
+                            if (path.startsWith('/') && fs.existsSync(path)) {
+                                chromeExecPath = path;
+                                break;
+                            } else if (path === 'chrome') {
+                                chromeExecPath = 'chrome'; // Will be tested by puppeteer
+                                break;
+                            }
+                        } catch (err) {
+                            continue;
+                        }
+                    }
+                }
+                console.log(`[PUPPETEER] - Production Chrome path:`, chromeExecPath);
+            }
+
             const launchOptions = isProd ? {
-                executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || 'chrome', // chrome is in PATH on Heroku
+                executablePath: chromeExecPath,
                 headless: true,
                 args: [
                     '--no-sandbox',
