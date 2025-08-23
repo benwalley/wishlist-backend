@@ -57,11 +57,11 @@ class PuppeteerService {
                 } else if (process.env.CHROME_BIN) {
                     chromeExecPath = process.env.CHROME_BIN;
                 } else {
-                    // Try common buildpack paths
+                    // Try common buildpack paths - prioritize heroku-community/chrome-for-testing
                     const fs = require('fs');
                     const possiblePaths = [
-                        'chrome',
-                        '/app/.chrome-for-testing/chrome-linux64/chrome',
+                        '/app/.chrome-for-testing/chrome-linux64/chrome', // heroku-community/chrome-for-testing
+                        'chrome', // Try PATH
                         '/usr/bin/google-chrome-stable',
                         '/usr/bin/chromium-browser'
                     ];
