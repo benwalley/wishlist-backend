@@ -25,7 +25,8 @@
     "puppeteer-core": "^24.11.1",
     "sequelize": "^6.37.5",
     "sequelize-cli": "^6.6.2",
-    "sharp": "^0.34.2"
+    "sharp": "^0.34.2",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.22"

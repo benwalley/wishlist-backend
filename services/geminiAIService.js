@@ -210,7 +210,7 @@ class GeminiAIService {
         }
 
         // Truncate HTML content if too long (Gemini has token limits)
-        const maxHtmlLength = 500000;
+        const maxHtmlLength = 1000000;
         const truncatedHtml = htmlContent.length > maxHtmlLength ?
             htmlContent.substring(0, maxHtmlLength) + '...' :
             htmlContent;
@@ -375,13 +375,13 @@ Return only the JSON object, no additional text or explanation.`;
             if (!response.ok) {
                 const responseText = await response.text();
                 console.error(`Gemini API Error - Status: ${response.status}, Response: ${responseText}`);
-                
+
                 const errorData = await response.json().catch(() => ({ rawResponse: responseText }));
                 throw new Error(`API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || 'Error translating server response to JSON'}`);
             }
 
             const result = await response.json();
-            
+
             // Extract image data from response
             if (!result.predictions || result.predictions.length === 0) {
                 throw new Error('No images generated in response');
