@@ -147,6 +147,77 @@ class EmailService {
         return this.sendEmail(email, subject, htmlContent, textContent);
     }
 
+    async sendGroupInvitationEmail(email, groupName, inviterName, userName) {
+        const signupUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/signup`;
+
+        const subject = `You've been invited to join "${groupName}" on Wishlist`;
+        const htmlContent = `
+            <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .header { background-color: #f8f9fa; padding: 20px; text-align: center; }
+                        .content { padding: 20px; }
+                        .button { display: inline-block; padding: 12px 24px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px; }
+                        .group-name { color: #007bff; font-weight: bold; }
+                        .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #666; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>🎁 You're Invited!</h1>
+                        </div>
+                        <div class="content">
+                            <p>Hello${userName ? ` ${userName}` : ''},</p>
+                            <p>${inviterName} has invited you to join the <span class="group-name">"${groupName}"</span> group on Wishlist!</p>
+                            <p>Wishlist is a platform where you can create and share wishlists with friends and family, making gift-giving easier and more meaningful.</p>
+                            <p>Join us to:</p>
+                            <ul>
+                                <li>Create and manage your personal wishlists</li>
+                                <li>Share your wishes with group members</li>
+                                <li>Discover what others are hoping for</li>
+                                <li>Coordinate gifts to avoid duplicates</li>
+                            </ul>
+                            <p style="text-align: center; margin: 30px 0;">
+                                <a href="${signupUrl}" class="button">Join Wishlist</a>
+                            </p>
+                            <p>Once you create your account, you'll automatically be added to the "${groupName}" group and can start exploring everyone's wishlists!</p>
+                        </div>
+                        <div class="footer">
+                            <p>If you're having trouble clicking the button, copy and paste the following URL into your browser:</p>
+                            <p>${signupUrl}</p>
+                            <p>This invitation was sent by ${inviterName}. If you don't know this person or received this email by mistake, you can safely ignore it.</p>
+                        </div>
+                    </div>
+                </body>
+            </html>
+        `;
+
+        const textContent = `
+            Hello${userName ? ` ${userName}` : ''},
+
+            ${inviterName} has invited you to join the "${groupName}" group on Wishlist!
+
+            Wishlist is a platform where you can create and share wishlists with friends and family, making gift-giving easier and more meaningful.
+
+            Join us to:
+            • Create and manage your personal wishlists
+            • Share your wishes with group members
+            • Discover what others are hoping for
+            • Coordinate gifts to avoid duplicates
+
+            Join Wishlist: ${signupUrl}
+
+            Once you create your account, you'll automatically be added to the "${groupName}" group and can start exploring everyone's wishlists!
+
+            This invitation was sent by ${inviterName}. If you don't know this person or received this email by mistake, you can safely ignore it.
+        `;
+
+        return this.sendEmail(email, subject, htmlContent, textContent);
+    }
+
     async verifyConnection() {
         try {
             await this.transporter.verify();

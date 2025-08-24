@@ -3,6 +3,7 @@ const GroupService = require('../services/groupService');
 const UserService = require('../services/userService');
 const ListService = require('../services/listService');
 const QAService = require('../services/qaService');
+const emailService = require('../services/emailService');
 const {Op} = require('sequelize');
 
 /**
@@ -119,20 +120,51 @@ exports.inviteToGroup = async (req, res) => {
         const results = [];
         const errors = [];
         const alreadyMembers = [];
+        const emailsSent = [];
+
+        // Get group info and inviting user info for email
+        const group = await GroupService.getGroupById(groupId);
+        const invitingUser = await UserService.getUserById(invitingUserId);
 
         // Process each email
         for (const emailAddress of emailList) {
             try {
+                // Check if user already exists before creating
+                const existingUser = await User.findOne({ 
+                    where: { email: emailAddress.toLowerCase().trim() },
+                    attributes: { exclude: ['password'] }
+                });
+                
+                const userWasCreated = !existingUser;
+                const wasInactive = existingUser && !existingUser.isActive;
+
                 // Find or create a user with the provided email
                 const invitedUser = await UserService.findOrCreateUserByEmail(emailAddress);
 
                 // Add user to the group's invited list
                 await GroupService.inviteUserToGroup(groupId, invitedUser.id, invitingUserId);
 
+                // Send invitation email if user was newly created or was inactive
+                if (userWasCreated || wasInactive) {
+                    try {
+                        await emailService.sendGroupInvitationEmail(
+                            invitedUser.email,
+                            group.groupName,
+                            invitingUser.name,
+                            invitedUser.name
+                        );
+                        emailsSent.push(emailAddress);
+                    } catch (emailError) {
+                        console.error('Failed to send invitation email to', emailAddress, ':', emailError);
+                        // Don't fail the invitation if email fails
+                    }
+                }
+
                 results.push({
                     email: invitedUser.email,
                     success: true,
-                    message: 'Invited successfully'
+                    message: 'Invited successfully',
+                    emailSent: userWasCreated || wasInactive
                 });
 
             } catch (error) {
@@ -167,9 +199,14 @@ exports.inviteToGroup = async (req, res) => {
         // Build response message
         let message = '';
         const messageParts = [];
+        const emailsSentCount = emailsSent.length;
 
         if (successCount > 0) {
             messageParts.push(`${successCount} user${successCount > 1 ? 's' : ''} invited successfully`);
+        }
+
+        if (emailsSentCount > 0) {
+            messageParts.push(`${emailsSentCount} invitation email${emailsSentCount > 1 ? 's' : ''} sent`);
         }
 
         if (alreadyMemberCount > 0) {
