@@ -232,7 +232,7 @@ Return only the JSON object, no additional text or explanation.`;
 
         try {
             const result = await this.generateResponse(prompt, {
-                maxTokens: 50000,
+                maxTokens: 500000,
                 temperature: 0.1 // Lower temperature for more consistent JSON output
             });
 
@@ -291,27 +291,60 @@ Return only the JSON object, no additional text or explanation.`;
         let finalPrompt = prompt;
 
         try {
-            // Handle different image types
+            // Handle different image types with AI-enhanced prompts
             if (imageType === 'abstract') {
                 if (prompt && prompt.trim().length > 0) {
-                    // Use user prompt with abstract styling enhancements
-                    finalPrompt = `${prompt.trim()}, abstract art style, artistic composition, modern digital art, elegant flowing forms, sophisticated color palette, contemporary aesthetic`;
+                    // Use chat AI to generate abstract version of the user's prompt
+                    const enhancementQuery = `You are an expert abstract art prompt generator. The user will provide a concept, theme, or feeling. Expand their input into a full prompt for generating a beautiful abstract image.
+
+The final prompt should:
+- Emphasize abstract qualities (shapes, textures, patterns, gradients, surreal forms)
+- Suggest a mood or emotional atmosphere
+- Recommend a color palette
+- Indicate style inspirations (digital painting, fractals, flowing geometry, cosmic surrealism, etc.)
+- Make the image highly detailed, visually striking, and immersive
+
+Format your answer as a single polished prompt, without extra commentary.
+The user input is: ${prompt.trim()}`;
+
+                    const aiResponse = await this.generateResponse(enhancementQuery, { maxTokens: 5000, temperature: 0.8 });
+                    finalPrompt = aiResponse.response;
                 } else {
-                    // Use predefined random abstract prompts
+                    // Generate pure abstract art with enhanced variety and artistic quality
                     const abstractPrompts = [
-                        "Minimalist geometric abstract art with flowing curves and gradients in soft pastel colors, modern digital art style",
-                        "Abstract watercolor splash with vibrant blues and purples, elegant artistic composition with smooth flowing forms",
-                        "Elegant abstract pattern with golden ratio spirals, soft ambient lighting, contemporary art style with warm colors",
-                        "Fluid abstract design with organic shapes in teal and coral colors, sophisticated modern art aesthetic",
-                        "Abstract geometric composition with intersecting circles and triangles in muted earth tones, clean minimalist style",
-                        "Dreamy abstract cloudscape with soft gradients from pink to purple, ethereal and calming atmosphere"
+                        "Dynamic abstract expressionism with bold gestural brushstrokes, intense color contrasts, raw emotional energy, Jackson Pollock inspired drip painting style",
+                        "Minimalist geometric abstraction featuring perfect golden ratio proportions, subtle color gradients from deep navy to silver, clean modern composition",
+                        "Fluid organic abstract forms flowing like liquid mercury, iridescent color shifts from purple to gold, smooth ethereal transitions, contemporary digital art",
+                        "Bold color field painting with massive blocks of saturated hues, Mark Rothko inspired composition, deep emotional resonance through pure color",
+                        "Intricate mandala-style abstract pattern with sacred geometry, fractal elements, cosmic color palette of deep blues and luminous whites",
+                        "Abstract landscape interpretation with sweeping horizontal forms, atmospheric color washes, impressionistic technique, serene natural harmony",
+                        "Cubist-inspired abstract composition with fragmented geometric shapes, multiple perspectives, sophisticated earth tone palette with metallic accents",
+                        "Surreal abstract dreamscape with floating organic forms, impossible architecture, vibrant psychedelic colors blending into infinity",
+                        "Textural abstract art with heavy impasto technique, sculptural paint application, monochromatic color scheme with dramatic light and shadow",
+                        "Neo-constructivist abstract design with precise geometric intersections, primary color palette, bold graphic elements, modernist aesthetic",
+                        "Abstract representation of music visualization, flowing sound waves, rhythmic patterns, synesthetic color harmonies dancing across canvas",
+                        "Biomorphic abstract forms suggesting cellular structures, microscopic beauty, organic growth patterns, scientific artistry with jewel tones"
                     ];
                     finalPrompt = abstractPrompts[Math.floor(Math.random() * abstractPrompts.length)];
                 }
             } else if (imageType === 'animal') {
                 if (prompt && prompt.trim().length > 0) {
-                    // Use user prompt with cute/kawaii styling enhancements
-                    finalPrompt = `${prompt.trim()}, adorable and cute style, big expressive eyes, kawaii aesthetic, soft lighting, heartwarming expression, fluffy texture, charming and loveable`;
+                    // Use chat AI to generate cute animal version of the user's prompt
+                    const enhancementQuery = `You are an expert at creating adorable animal image prompts. The user will provide a concept, animal, or theme. Transform their input into a detailed prompt for generating a cute, loveable animal image.
+
+The final prompt should:
+- Emphasize adorable qualities (big expressive eyes, soft features, cute proportions)
+- Include kawaii or cute styling elements
+- Suggest warm, soft lighting and cozy atmosphere
+- Recommend fluffy textures and heartwarming expressions
+- Make the animal charming, loveable, and endearing
+- Include specific visual details that enhance cuteness
+
+Format your answer as a single polished prompt, without extra commentary.
+The user input is: ${prompt.trim()}`;
+
+                    const aiResponse = await this.generateResponse(enhancementQuery, { maxTokens: 5000, temperature: 0.8 });
+                    finalPrompt = aiResponse.response;
                 } else {
                     // Use predefined random animal prompts
                     const animals = require('../data/animals');
@@ -328,16 +361,24 @@ Return only the JSON object, no additional text or explanation.`;
                 });
             }
 
-            // Preprocess prompt for natural language
+            // Handle custom image type with AI enhancement
             if (imageType === 'custom') {
-                const cleanPrompt = prompt.trim().toLowerCase();
-                if (cleanPrompt.startsWith('create an image of') ||
-                    cleanPrompt.startsWith('generate an image of') ||
-                    cleanPrompt.startsWith('make an image of')) {
-                    finalPrompt = prompt.replace(/^(create an image of|generate an image of|make an image of)\s*/i, '');
-                } else {
-                    finalPrompt = prompt;
-                }
+                // Use chat AI to enhance the custom prompt
+                const enhancementQuery = `You are an expert image prompt generator. The user will provide a concept or description. Transform their input into a detailed, vivid prompt for generating a high-quality, visually appealing image.
+
+The final prompt should:
+- Add specific visual details, lighting, and composition
+- Suggest artistic style and technique
+- Include atmospheric and mood elements
+- Make the description more vivid and immersive
+- Enhance the visual appeal while keeping the core concept intact
+- Be suitable for AI image generation
+
+Format your answer as a single polished prompt, without extra commentary.
+The user input is: ${prompt.trim()}`;
+
+                const aiResponse = await this.generateResponse(enhancementQuery, { maxTokens: 5000, temperature: 0.7 });
+                finalPrompt = aiResponse.response;
             }
 
             // Set default options for image generation
