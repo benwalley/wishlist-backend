@@ -906,6 +906,7 @@ class GiftTrackingService {
                 await NotificationService.createNotification({
                     message: `${participantName} wants to go in on ${itemName}`,
                     notificationType: 'someone_go_in_on',
+                    userId: participant.giverId, // Send notification to the existing participant
                     metadata: {
                         itemId: itemId,
                         itemName: itemName,

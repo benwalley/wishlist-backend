@@ -290,7 +290,12 @@ class ListService {
                     createdById: userId,
                     deleted: false
                 },
-                raw: true,
+                include: [
+                    {
+                        model: ItemLink,
+                        as: 'itemLinks'
+                    }
+                ],
                 order: [['createdAt', 'DESC']]
             });
 

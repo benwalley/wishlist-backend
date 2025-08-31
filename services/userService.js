@@ -344,7 +344,7 @@ class UserService {
     }
 
     /**
-     * Get all groups a user is part of (as owner, member, or admin)
+     * Get all groups a user is part of (as owner, member, admin, or invited)
      * @param {number} userId - ID of the user
      * @returns {Promise<Array>} - List of groups
      */
@@ -362,7 +362,8 @@ class UserService {
                 [Op.or]: [
                     { ownerId: userId },
                     { members: { [Op.contains]: [userId] } },
-                    { adminIds: { [Op.contains]: [userId] } }
+                    { adminIds: { [Op.contains]: [userId] } },
+                    { invitedIds: { [Op.contains]: [userId] } }
                 ]
             }
         });
@@ -371,7 +372,7 @@ class UserService {
     }
 
     /**
-     * Get all member IDs from a list of groups
+     * Get all member IDs from a list of groups (including invited users)
      * @param {Array} groups - List of group objects
      * @returns {Set} - Set of unique user IDs
      */
@@ -393,6 +394,13 @@ class UserService {
             if (Array.isArray(group.adminIds)) {
                 group.adminIds.forEach(adminId => {
                     memberIds.add(adminId);
+                });
+            }
+
+            // Add all invited users
+            if (Array.isArray(group.invitedIds)) {
+                group.invitedIds.forEach(invitedId => {
+                    memberIds.add(invitedId);
                 });
             }
         });
@@ -426,7 +434,7 @@ class UserService {
     }
 
     /**
-     * Get all users accessible to the current user (yourself, your subusers, and users in your groups)
+     * Get all users accessible to the current user (yourself, your subusers, users in your groups, and users in groups you're invited to)
      * @param {number} userId - ID of the current user
      * @returns {Promise<Array>} - List of accessible users
      */

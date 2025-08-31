@@ -5,15 +5,16 @@ const { ApiError } = require('../middleware/errorHandler');
 class NotificationService {
     /**
      * Create a new notification
-     * @param {Object} notificationData - { message, notificationType, metadata }
+     * @param {Object} notificationData - { message, notificationType, metadata, userId }
      * @returns {Promise<Object>} Created notification
      */
-    static async createNotification({ message, notificationType = 'general', metadata = null }) {
+    static async createNotification({ message, notificationType = 'general', metadata = null, userId = null }) {
         try {
             const notification = await Notification.create({
                 message,
                 notificationType,
                 metadata,
+                userId, // null for global notifications, specific userId for targeted notifications
                 read: false
             });
 
@@ -29,13 +30,21 @@ class NotificationService {
     }
 
     /**
-     * Get all notifications
-     * @param {Object} filters - { unreadOnly, notificationType, limit, offset }
+     * Get all notifications for a specific user
+     * @param {Object} filters - { userId, unreadOnly, notificationType, limit, offset }
      * @returns {Promise<Object>} { notifications, total, unreadCount }
      */
-    static async getAllNotifications({ unreadOnly = false, notificationType = null, limit = 50, offset = 0 } = {}) {
+    static async getAllNotifications({ userId = null, unreadOnly = false, notificationType = null, limit = 50, offset = 0 } = {}) {
         try {
             const whereClause = {};
+            
+            if (userId) {
+                // Get notifications for this specific user OR global notifications (userId is null)
+                whereClause[Op.or] = [
+                    { userId: userId },
+                    { userId: null }
+                ];
+            }
             
             if (unreadOnly) {
                 whereClause.read = false;
@@ -52,11 +61,20 @@ class NotificationService {
                 offset
             });
 
-            // Get unread count separately
+            // Get unread count separately for this user
+            const unreadWhereClause = {
+                read: false
+            };
+            
+            if (userId) {
+                unreadWhereClause[Op.or] = [
+                    { userId: userId },
+                    { userId: null }
+                ];
+            }
+
             const unreadCount = await Notification.count({
-                where: {
-                    read: false
-                }
+                where: unreadWhereClause
             });
 
             return {
@@ -111,17 +129,27 @@ class NotificationService {
     }
 
     /**
-     * Mark all notifications as read
+     * Mark all notifications as read for a specific user
+     * @param {number} userId - User ID to mark notifications for
      * @returns {Promise<number>} Number of notifications marked as read
      */
-    static async markAllAsRead() {
+    static async markAllAsRead(userId = null) {
         try {
+            const whereClause = {
+                read: false
+            };
+
+            if (userId) {
+                whereClause[Op.or] = [
+                    { userId: userId },
+                    { userId: null }
+                ];
+            }
+
             const [updatedCount] = await Notification.update(
                 { read: true },
                 {
-                    where: {
-                        read: false
-                    }
+                    where: whereClause
                 }
             );
 
@@ -202,15 +230,25 @@ class NotificationService {
     }
 
     /**
-     * Get unread notification count
+     * Get unread notification count for a specific user
+     * @param {number} userId - User ID to get count for
      * @returns {Promise<number>} Unread count
      */
-    static async getUnreadCount() {
+    static async getUnreadCount(userId = null) {
         try {
+            const whereClause = {
+                read: false
+            };
+
+            if (userId) {
+                whereClause[Op.or] = [
+                    { userId: userId },
+                    { userId: null }
+                ];
+            }
+
             const count = await Notification.count({
-                where: {
-                    read: false
-                }
+                where: whereClause
             });
 
             return count;
@@ -226,7 +264,7 @@ class NotificationService {
 
     /**
      * Bulk create notifications
-     * @param {Array} notifications - Array of { message, notificationType, metadata }
+     * @param {Array} notifications - Array of { message, notificationType, metadata, userId }
      * @returns {Promise<Array>} Created notifications
      */
     static async createBulkNotifications(notifications) {
@@ -244,6 +282,7 @@ class NotificationService {
                     message: n.message,
                     notificationType: n.notificationType || 'general',
                     metadata: n.metadata || null,
+                    userId: n.userId || null,
                     read: false
                 }))
             );

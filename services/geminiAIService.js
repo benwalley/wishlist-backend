@@ -329,16 +329,17 @@ The user input is: ${prompt.trim()}`;
                 }
             } else if (imageType === 'animal') {
                 if (prompt && prompt.trim().length > 0) {
-                    // Use chat AI to generate cute animal version of the user's prompt
-                    const enhancementQuery = `You are an expert at creating adorable animal image prompts. The user will provide a concept, animal, or theme. Transform their input into a detailed prompt for generating a cute, loveable animal image.
+                    // Use chat AI to generate cute/adorable version of the user's prompt
+                    const enhancementQuery = `You are an expert at creating adorable image prompts with kawaii/cute styling. The user will provide a concept, object, character, or theme. Transform their input into a detailed prompt for generating a cute, loveable image using adorable styling.
 
 The final prompt should:
 - Emphasize adorable qualities (big expressive eyes, soft features, cute proportions)
 - Include kawaii or cute styling elements
 - Suggest warm, soft lighting and cozy atmosphere
-- Recommend fluffy textures and heartwarming expressions
-- Make the animal charming, loveable, and endearing
+- Recommend soft textures and heartwarming expressions
+- Make the subject charming, loveable, and endearing
 - Include specific visual details that enhance cuteness
+- Keep the original concept but make it adorable (don't force it to be an animal unless the user specifically mentioned animals)
 
 Format your answer as a single polished prompt, without extra commentary.
 The user input is: ${prompt.trim()}`;

@@ -1,6 +1,7 @@
 const { Proposal, ProposalParticipant, User, ListItem, Getting, sequelize } = require('../models');
 const { ApiError } = require('../middleware/errorHandler');
 const { Op } = require('sequelize');
+const NotificationService = require('./notificationService');
 
 class ProposalService {
     /**
@@ -26,6 +27,9 @@ class ProposalService {
             }
 
             await transaction.commit();
+
+            // Send notifications to proposal participants
+            await this.notifyProposalCreated(newProposal.id, data.proposalCreatorId);
 
             // Fetch the complete proposal with its users
             return this.getProposalById(newProposal.id);
@@ -256,8 +260,26 @@ class ProposalService {
                 });
             }
 
+            // Get participants before deletion for notifications
+            const proposalWithParticipants = await Proposal.findByPk(id, {
+                include: [
+                    {
+                        model: ProposalParticipant,
+                        as: 'proposalParticipants'
+                    },
+                    {
+                        model: ListItem,
+                        as: 'itemData',
+                        attributes: ['name']
+                    }
+                ]
+            });
+
             // Soft delete the proposal by adding a deleted column
             await proposal.update({ deleted: true });
+
+            // Send notifications to participants (excluding the deleter)
+            await this.notifyProposalDeleted(proposalWithParticipants, userId);
 
             return proposal;
         } catch (error) {
@@ -439,6 +461,9 @@ class ProposalService {
             if (newStatus === 'accepted') {
                 const proposal = await Proposal.findByPk(proposalId, { transaction });
                 await this.handleGettingRelationships(proposal, allParticipants, transaction);
+                
+                // Send notifications that proposal was fully accepted
+                await this.notifyProposalAccepted(proposalId, proposal.proposalCreatorId);
             }
 
             await transaction.commit();
@@ -525,6 +550,174 @@ class ProposalService {
         } catch (error) {
             console.error('Error handling Getting relationships:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Send notification to proposal participants when a proposal is created
+     * @param {number} proposalId - The proposal ID
+     * @param {number} creatorId - The ID of the user who created the proposal
+     */
+    static async notifyProposalCreated(proposalId, creatorId) {
+        try {
+            // Get proposal with participants and item data
+            const proposal = await Proposal.findByPk(proposalId, {
+                include: [
+                    {
+                        model: ProposalParticipant,
+                        as: 'proposalParticipants'
+                    },
+                    {
+                        model: ListItem,
+                        as: 'itemData',
+                        attributes: ['name']
+                    }
+                ]
+            });
+
+            if (!proposal || !proposal.proposalParticipants) {
+                return;
+            }
+
+            // Get creator name
+            const creator = await User.findByPk(creatorId, {
+                attributes: ['name']
+            });
+            const creatorName = creator?.name || 'Someone';
+            const itemName = proposal.itemData?.name || 'Unknown item';
+
+            // Send notification to each participant (excluding the creator)
+            for (const participant of proposal.proposalParticipants) {
+                if (participant.userId !== creatorId) {
+                    await NotificationService.createNotification({
+                        message: `${creatorName} added you to a proposal for ${itemName}`,
+                        notificationType: 'proposal_created',
+                        userId: participant.userId,
+                        metadata: {
+                            proposalId: proposal.id,
+                            itemId: proposal.itemId,
+                            itemName: itemName,
+                            creatorId: creatorId,
+                            creatorName: creatorName,
+                            action: 'created'
+                        }
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error notifying proposal participants:', error);
+            // Don't throw - notifications are not critical to the main operation
+        }
+    }
+
+    /**
+     * Send notification to all participants when a proposal is fully accepted
+     * @param {number} proposalId - The proposal ID
+     * @param {number} creatorId - The ID of the user who created the proposal
+     */
+    static async notifyProposalAccepted(proposalId, creatorId) {
+        try {
+            // Get proposal with participants and item data
+            const proposal = await Proposal.findByPk(proposalId, {
+                include: [
+                    {
+                        model: ProposalParticipant,
+                        as: 'proposalParticipants'
+                    },
+                    {
+                        model: ListItem,
+                        as: 'itemData',
+                        attributes: ['name']
+                    }
+                ]
+            });
+
+            if (!proposal) {
+                return;
+            }
+
+            const itemName = proposal.itemData?.name || 'Unknown item';
+
+            // Collect all user IDs (creator + participants)
+            const allUserIds = [creatorId];
+            if (proposal.proposalParticipants) {
+                proposal.proposalParticipants.forEach(participant => {
+                    if (!allUserIds.includes(participant.userId)) {
+                        allUserIds.push(participant.userId);
+                    }
+                });
+            }
+
+            // Send notification to everyone involved
+            for (const userId of allUserIds) {
+                await NotificationService.createNotification({
+                    message: `The proposal for ${itemName} has been accepted by everyone`,
+                    notificationType: 'proposal_accepted',
+                    userId: userId,
+                    metadata: {
+                        proposalId: proposal.id,
+                        itemId: proposal.itemId,
+                        itemName: itemName,
+                        action: 'accepted'
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error notifying proposal acceptance:', error);
+            // Don't throw - notifications are not critical to the main operation
+        }
+    }
+
+    /**
+     * Send notification to proposal participants when a proposal is deleted
+     * @param {Object} proposal - The proposal object with participants and item data
+     * @param {number} deleterId - The ID of the user who deleted the proposal
+     */
+    static async notifyProposalDeleted(proposal, deleterId) {
+        try {
+            if (!proposal || !proposal.proposalParticipants) {
+                return;
+            }
+
+            const itemName = proposal.itemData?.name || 'Unknown item';
+
+            // Collect all user IDs (creator + participants) excluding the deleter
+            const allUserIds = [];
+            
+            // Check if creator has accepted (creator is implicitly considered accepted if proposal was created)
+            const creatorParticipant = proposal.proposalParticipants.find(p => p.userId === proposal.proposalCreatorId);
+            const creatorAccepted = creatorParticipant ? creatorParticipant.accepted : true; // Default to true for creator
+            
+            // Add creator if they're not the deleter and have accepted
+            if (proposal.proposalCreatorId !== deleterId && creatorAccepted) {
+                allUserIds.push(proposal.proposalCreatorId);
+            }
+
+            // Add participants if they're not the deleter AND have accepted the proposal
+            proposal.proposalParticipants.forEach(participant => {
+                if (participant.userId !== deleterId && participant.accepted === true && !allUserIds.includes(participant.userId)) {
+                    allUserIds.push(participant.userId);
+                }
+            });
+
+            // Send notification to each affected user
+            for (const userId of allUserIds) {
+                await NotificationService.createNotification({
+                    message: `A proposal you were part of for ${itemName} has been deleted`,
+                    notificationType: 'proposal_deleted',
+                    userId: userId,
+                    metadata: {
+                        proposalId: proposal.id,
+                        itemId: proposal.itemId,
+                        itemName: itemName,
+                        deleterId: deleterId,
+                        action: 'deleted'
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error notifying proposal deletion:', error);
+            // Don't throw - notifications are not critical to the main operation
         }
     }
 }

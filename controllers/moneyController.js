@@ -89,45 +89,30 @@ exports.getMyMoneyItems = async (req, res, next) => {
             order: [['createdAt', 'DESC']]
         });
 
-        // Get unique item IDs that are not null
-        const itemIds = [...new Set(
-            moneyItems
-                .map(money => money.itemId)
-                .filter(id => id !== null && id !== undefined)
-        )];
-
-        // Fetch item data for the itemIds
-        let itemsMap = {};
-        if (itemIds.length > 0) {
-            const items = await ListItem.findAll({
-                where: {
-                    id: itemIds,
-                    deleted: false
-                },
-                attributes: ['id', 'name', 'price', 'minPrice', 'maxPrice', 'notes', 'priority', 'isPublic']
-            });
-
-            // Create a map for easy lookup
-            itemsMap = items.reduce((map, item) => {
-                map[item.id] = item;
-                return map;
-            }, {});
-        }
-
-        // Combine money items with their corresponding item data
-        const moneyItemsWithData = moneyItems.map(money => {
+        // Loop through money items and fetch item data for each one
+        const moneyItemsWithData = [];
+        for (const money of moneyItems) {
             const moneyData = money.toJSON();
-            
-            // Add item data if itemId exists and item was found
-            if (money.itemId && itemsMap[money.itemId]) {
-                moneyData.item = itemsMap[money.itemId];
-            } else if (money.itemId) {
-                // Item ID exists but item not found (deleted or no access)
-                moneyData.item = null;
+
+            // If there is an itemId, fetch the item
+            if (money.itemId) {
+                const item = await ListItem.findOne({
+                    where: {
+                        id: money.itemId,
+                        deleted: false
+                    },
+                    attributes: ['id', 'name', 'price', 'minPrice', 'maxPrice', 'notes', 'priority', 'isPublic']
+                });
+
+                if (item) {
+                    moneyData.itemData = item;
+                } else {
+                    moneyData.itemData = null;
+                }
             }
 
-            return moneyData;
-        });
+            moneyItemsWithData.push(moneyData);
+        }
 
         res.status(200).json({
             success: true,

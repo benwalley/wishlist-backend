@@ -596,6 +596,7 @@ class GroupService {
             await NotificationService.createNotification({
                 message: `${inviterName} invited you to join ${groupName}`,
                 notificationType: 'group_invite',
+                userId: invitedUserId, // Send notification to the person being invited
                 metadata: {
                     groupId: group.id,
                     groupName: groupName,
@@ -645,6 +646,7 @@ class GroupService {
             await NotificationService.createNotification({
                 message: `${removerName} removed you from ${groupName}`,
                 notificationType: 'removed_from_group',
+                userId: removedUserId, // Send notification to the person being removed
                 metadata: {
                     groupId: group.id,
                     groupName: groupName,

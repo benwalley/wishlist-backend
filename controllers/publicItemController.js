@@ -52,7 +52,7 @@ exports.getPublicById = async (req, res) => {
                 {
                     model: models.ItemLink,
                     as: 'itemLinks',
-                    attributes: ['id', 'url', 'createdAt']
+                    attributes: ['id', 'label', 'url', 'createdAt']
                 }
             ]
         });
@@ -70,12 +70,11 @@ exports.getPublicById = async (req, res) => {
             const creatorUser = await models.User.findOne({
                 where: {
                     id: item.createdById,
-                    isPublic: true,
                     isActive: true
                 },
                 attributes: ['id', 'name', 'image']
             });
-            
+
             if (creatorUser) {
                 creator = creatorUser.toJSON();
             }

@@ -578,6 +578,7 @@ class QAService {
                         await NotificationService.createNotification({
                             message: `${askerName} asked you a question: "${truncatedText}"`,
                             notificationType: 'question_asked',
+                            userId: userId, // Send notification to the specific user being notified
                             metadata: {
                                 questionId: question.id,
                                 askerId: askerId,

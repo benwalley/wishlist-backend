@@ -15,6 +15,7 @@ exports.getNotifications = async (req, res) => {
         } = req.query;
 
         const result = await NotificationService.getAllNotifications({
+            userId: req.user.id, // Filter notifications for the current user
             unreadOnly: true, // Always filter to unread only
             notificationType: notificationType || null,
             limit: parseInt(limit) || 50,
@@ -41,7 +42,7 @@ exports.getNotifications = async (req, res) => {
  */
 exports.getUnreadCount = async (req, res) => {
     try {
-        const count = await NotificationService.getUnreadCount();
+        const count = await NotificationService.getUnreadCount(req.user.id);
 
         return res.json({
             success: true,
@@ -95,7 +96,7 @@ exports.markAsRead = async (req, res) => {
  */
 exports.markAllAsRead = async (req, res) => {
     try {
-        const updatedCount = await NotificationService.markAllAsRead();
+        const updatedCount = await NotificationService.markAllAsRead(req.user.id);
 
         return res.json({
             success: true,
@@ -149,7 +150,7 @@ exports.deleteNotification = async (req, res) => {
  */
 exports.createNotification = async (req, res) => {
     try {
-        const { message, notificationType, metadata } = req.body;
+        const { message, notificationType, metadata, userId } = req.body;
 
         if (!message) {
             return res.status(400).json({
@@ -161,7 +162,8 @@ exports.createNotification = async (req, res) => {
         const notification = await NotificationService.createNotification({
             message,
             notificationType: notificationType || 'general',
-            metadata: metadata || null
+            metadata: metadata || null,
+            userId: userId || null // Allow targeting specific users or creating global notifications
         });
 
         return res.status(201).json({

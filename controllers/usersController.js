@@ -297,7 +297,7 @@ exports.getSubusers = async (req, res, next) => {
 exports.editSubuser = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { name, publicDescription, image, notes, isPublic } = req.body;
+        const { name, publicDescription, image, notes, isPublic, groupIds } = req.body;
 
         if (!req.user) {
             return res.status(401).json({
@@ -319,11 +319,20 @@ exports.editSubuser = async (req, res, next) => {
             publicDescription === undefined &&
             image === undefined &&
             notes === undefined &&
-            isPublic === undefined
+            isPublic === undefined &&
+            groupIds === undefined
         ) {
             return res.status(400).json({
                 success: false,
-                message: 'At least one field (name, publicDescription, image, notes, isPublic) is required for update.'
+                message: 'At least one field (name, publicDescription, image, notes, isPublic, groupIds) is required for update.'
+            });
+        }
+
+        // Validate groupIds if provided
+        if (groupIds !== undefined && !Array.isArray(groupIds)) {
+            return res.status(400).json({
+                success: false,
+                message: 'groupIds must be an array of group IDs.'
             });
         }
 
@@ -363,13 +372,72 @@ exports.editSubuser = async (req, res, next) => {
         // Save changes to the database
         const updatedSubuser = await subuser.save();
 
+        // Handle group updates if groupIds provided
+        if (groupIds !== undefined) {
+            // Get all groups where the current user has permission to add members (member, admin, or owner)
+            const userGroups = await models.Group.findAll({
+                where: {
+                    [models.Sequelize.Op.or]: [
+                        { ownerId: req.user.id },
+                        { adminIds: { [models.Sequelize.Op.contains]: [req.user.id] } },
+                        { members: { [models.Sequelize.Op.contains]: [req.user.id] } }
+                    ],
+                    deleted: false
+                }
+            });
+
+            const allowedGroupIds = userGroups.map(group => group.id);
+
+            // Validate that all requested group IDs are groups the user can manage
+            const invalidGroupIds = groupIds.filter(groupId => !allowedGroupIds.includes(groupId));
+            if (invalidGroupIds.length > 0) {
+                return res.status(403).json({
+                    success: false,
+                    message: `You do not have permission to add users to groups: ${invalidGroupIds.join(', ')}`
+                });
+            }
+
+            // Remove subuser from all current groups where parent user has permission
+            await models.Group.update(
+                {
+                    members: models.Sequelize.literal(`array_remove(members, ${subuser.id})`)
+                },
+                {
+                    where: {
+                        [models.Sequelize.Op.or]: [
+                            { ownerId: req.user.id },
+                            { adminIds: { [models.Sequelize.Op.contains]: [req.user.id] } },
+                            { members: { [models.Sequelize.Op.contains]: [req.user.id] } }
+                        ],
+                        deleted: false
+                    }
+                }
+            );
+
+            // Add subuser to the new groups
+            if (groupIds.length > 0) {
+                await models.Group.update(
+                    {
+                        members: models.Sequelize.literal(`array_append(members, ${subuser.id})`)
+                    },
+                    {
+                        where: {
+                            id: { [models.Sequelize.Op.in]: groupIds },
+                            deleted: false
+                        }
+                    }
+                );
+            }
+        }
+
         // Remove password from response
         const { password: _, ...subuserResponse } = updatedSubuser.toJSON();
 
         res.status(200).json({
             success: true,
             message: 'Subuser updated successfully',
-            user: subuserResponse
+            user: subuserResponse,
+            ...(groupIds !== undefined && { groupIds: groupIds })
         });
     } catch (error) {
         console.error('Error updating subuser:', error);
@@ -425,12 +493,13 @@ exports.updateSubuserGroups = async (req, res, next) => {
             });
         }
 
-        // Get all groups where the current user has permission to add members
+        // Get all groups where the current user has permission to add members (member, admin, or owner)
         const userGroups = await models.Group.findAll({
             where: {
                 [models.Sequelize.Op.or]: [
                     { ownerId: req.user.id },
-                    { adminIds: { [models.Sequelize.Op.contains]: [req.user.id] } }
+                    { adminIds: { [models.Sequelize.Op.contains]: [req.user.id] } },
+                    { members: { [models.Sequelize.Op.contains]: [req.user.id] } }
                 ],
                 deleted: false
             }
@@ -456,7 +525,8 @@ exports.updateSubuserGroups = async (req, res, next) => {
                 where: {
                     [models.Sequelize.Op.or]: [
                         { ownerId: req.user.id },
-                        { adminIds: { [models.Sequelize.Op.contains]: [req.user.id] } }
+                        { adminIds: { [models.Sequelize.Op.contains]: [req.user.id] } },
+                        { members: { [models.Sequelize.Op.contains]: [req.user.id] } }
                     ],
                     deleted: false
                 }

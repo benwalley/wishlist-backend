@@ -101,15 +101,21 @@ class EventService {
                     });
 
                     // Manually fetch item data for each getting record
-                    const gettingRecordsWithItems = await Promise.all(
+                    const gettingRecordsWithItems = (await Promise.all(
                         gettingRecords.map(async (getting) => {
                             const gettingData = getting.toJSON();
                             if (gettingData.itemId) {
                                 const item = await ListItem.findByPk(gettingData.itemId);
-                                const itemData = {
-                                    name: item.name || '',
+                                // Only include item data if item exists and is not deleted
+                                if (item && !item.deleted) {
+                                    const itemData = {
+                                        name: item.name || '',
+                                    }
+                                    gettingData.item = itemData
+                                } else {
+                                    // Skip this getting record if item is deleted
+                                    return null;
                                 }
-                                gettingData.item = itemData
                             }
 
                             // Find buyer status if there's a proposal
@@ -136,7 +142,7 @@ class EventService {
 
                             return gettingData;
                         })
-                    );
+                    )).filter(record => record !== null); // Remove null entries (deleted items)
 
                     // Get all go_in_on records for this recipient with item details
                     const goInOnRecords = await GoInOn.findAll({
@@ -148,7 +154,8 @@ class EventService {
                             {
                                 model: ListItem,
                                 as: 'item',
-                                attributes: ['id', 'name']
+                                attributes: ['id', 'name'],
+                                where: { deleted: false } // Only include non-deleted items
                             }
                         ]
                     });

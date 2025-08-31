@@ -7,11 +7,22 @@ module.exports = (sequelize) => {
          * Helper method for defining associations.
          */
         static associate(models) {
-            // No associations - notifications are now global
+            // Associate with User - notifications are user-specific
+            this.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
         }
     }
 
     Notification.init({
+        userId: {
+            type: DataTypes.INTEGER,
+            allowNull: true, // Allow null for global/system notifications
+            references: {
+                model: 'users',
+                key: 'id'
+            },
+            onUpdate: 'CASCADE',
+            onDelete: 'CASCADE'
+        },
         message: {
             type: DataTypes.TEXT,
             allowNull: false,
@@ -25,7 +36,7 @@ module.exports = (sequelize) => {
             allowNull: false,
             defaultValue: 'general',
             validate: {
-                isIn: [['general', 'removed_from_group', 'question_asked', 'group_invite', 'someone_go_in_on', 'gotten_item_deleted', 'item_getting', 'item_comment', 'group_activity', 'list_shared', 'proposal', 'system', 'info', 'question_asked']]
+                isIn: [['general', 'removed_from_group', 'question_asked', 'group_invite', 'someone_go_in_on', 'gotten_item_deleted', 'item_getting', 'item_comment', 'group_activity', 'list_shared', 'proposal', 'proposal_created', 'proposal_accepted', 'proposal_deleted', 'system', 'info', 'question_asked']]
             }
         },
         read: {

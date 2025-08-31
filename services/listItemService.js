@@ -247,8 +247,9 @@ class ListItemService {
 
     // Update a list item by ID
     static async updateItem(id, updates) {
+        const transaction = await sequelize.transaction();
         try {
-            const item = await ListItem.findByPk(id);
+            const item = await ListItem.findByPk(id, { transaction });
             if (!item) {
                 throw new ApiError('ListItem not found', {
                     status: 404,
@@ -257,9 +258,37 @@ class ListItemService {
                 });
             }
 
-            await item.update(updates);
+            // Extract itemLinks from updates if provided
+            const { itemLinks, ...itemData } = updates;
+
+            // Update the list item
+            await item.update(itemData, { transaction });
+
+            // Handle ItemLink records if provided
+            if (itemLinks !== undefined) {
+                // Delete existing links
+                await ItemLink.destroy({
+                    where: { itemId: id },
+                    transaction
+                });
+
+                // Create new ItemLink records if provided
+                if (Array.isArray(itemLinks) && itemLinks.length > 0) {
+                    const linkPromises = itemLinks.map(link =>
+                        ItemLink.create({
+                            itemId: item.id,
+                            label: link.label,
+                            url: link.url
+                        }, { transaction })
+                    );
+                    await Promise.all(linkPromises);
+                }
+            }
+
+            await transaction.commit();
             return item;
         } catch (error) {
+            await transaction.rollback();
             console.error('Error updating ListItem:', error);
             if (error instanceof ApiError) throw error;
 
@@ -689,6 +718,7 @@ class ListItemService {
                 await NotificationService.createNotification({
                     message: `An item you marked as 'gotten' has been deleted: ${itemName}`,
                     notificationType: 'gotten_item_deleted',
+                    userId: record.giverId, // Send notification to the person who marked it as gotten
                     metadata: {
                         itemId: record.itemId,
                         itemName: itemName,
