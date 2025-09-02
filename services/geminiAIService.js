@@ -474,6 +474,158 @@ The user input is: ${prompt.trim()}`;
             });
         }
     }
+
+    /**
+     * Generate structured JSON response using Gemini's structured output feature
+     * @param {string} query - The prompt/query text
+     * @param {Object} jsonSchema - JSON schema defining the expected output structure
+     * @param {Object} options - Additional options (maxTokens, temperature, etc.)
+     * @returns {Promise<Object>} - Structured JSON response
+     */
+    async generateStructuredResponse(query, jsonSchema, options = {}) {
+        if (!this.apiKey) {
+            throw new ApiError('AI service not configured', {
+                status: 503,
+                errorType: 'AI_NOT_CONFIGURED',
+                publicMessage: 'AI service is not configured. Please contact administrator.'
+            });
+        }
+
+        if (!query || typeof query !== 'string' || query.trim().length === 0) {
+            throw new ApiError('Invalid query', {
+                status: 400,
+                errorType: 'INVALID_QUERY',
+                publicMessage: 'Query is required and must be a non-empty string'
+            });
+        }
+
+        if (!jsonSchema || typeof jsonSchema !== 'object') {
+            throw new ApiError('Invalid JSON schema', {
+                status: 400,
+                errorType: 'INVALID_SCHEMA',
+                publicMessage: 'JSON schema is required for structured output'
+            });
+        }
+
+        const startTime = Date.now();
+        try {
+            // Set default options
+            const defaultOptions = {
+                maxTokens: 500000,
+                temperature: 0.1, // Low temperature for consistent structured output
+                topP: 0.95,
+                topK: 64
+            };
+
+            const mergedOptions = { ...defaultOptions, ...options };
+
+            // Debug logging for schema
+            console.log('[GEMINI-STRUCTURED] Using JSON schema:', JSON.stringify(jsonSchema, null, 2));
+            console.log('[GEMINI-STRUCTURED] Query length:', query.length);
+
+            // Generate content with structured output
+            const result = await this.modelInstance.generateContent({
+                contents: [{
+                    role: 'user',
+                    parts: [{ text: query.trim() }]
+                }],
+                generationConfig: {
+                    maxOutputTokens: mergedOptions.maxTokens,
+                    temperature: mergedOptions.temperature,
+                    topP: mergedOptions.topP,
+                    topK: mergedOptions.topK,
+                    responseMimeType: 'application/json',
+                    responseSchema: jsonSchema
+                }
+            });
+
+            const response = await result.response;
+
+            // Enhanced debugging for structured output
+            console.log('[GEMINI-STRUCTURED] Response candidates:', response.candidates?.length || 0);
+            console.log('[GEMINI-STRUCTURED] Response usage:', response.usageMetadata);
+
+            if (response.candidates && response.candidates.length > 0) {
+                const candidate = response.candidates[0];
+                console.log('[GEMINI-STRUCTURED] Candidate finish reason:', candidate.finishReason);
+                console.log('[GEMINI-STRUCTURED] Candidate safety ratings:', candidate.safetyRatings);
+
+                if (candidate.finishReason === 'SAFETY') {
+                    console.error('[GEMINI-STRUCTURED] Content filtered by safety policies');
+                    throw new ApiError('Content filtered by safety policies', {
+                        status: 400,
+                        errorType: 'CONTENT_FILTERED',
+                        publicMessage: 'The content was filtered due to safety policies. Please try with different content.'
+                    });
+                }
+                if (candidate.finishReason === 'RECITATION') {
+                    console.error('[GEMINI-STRUCTURED] Content blocked due to recitation');
+                    throw new ApiError('Content blocked due to recitation', {
+                        status: 400,
+                        errorType: 'CONTENT_BLOCKED',
+                        publicMessage: 'The content was blocked due to recitation policies.'
+                    });
+                }
+                if (candidate.finishReason === 'MAX_TOKENS') {
+                    console.error('[GEMINI-STRUCTURED] Response truncated due to max tokens');
+                }
+                if (candidate.finishReason === 'OTHER') {
+                    console.error('[GEMINI-STRUCTURED] Response ended for unknown reason');
+                }
+            }
+
+            const text = response.text();
+            console.log('[GEMINI-STRUCTURED] Raw response text length:', text?.length || 0);
+            console.log('[GEMINI-STRUCTURED] Raw response preview:', text?.substring(0, 200) || 'No text');
+
+            if (!text || text.trim().length === 0) {
+                console.error('[GEMINI-STRUCTURED] Empty response details:', {
+                    candidates: response.candidates,
+                    finishReason: response.candidates?.[0]?.finishReason,
+                    safetyRatings: response.candidates?.[0]?.safetyRatings,
+                    usageMetadata: response.usageMetadata
+                });
+
+                throw new ApiError('Empty response from AI service', {
+                    status: 500,
+                    errorType: 'EMPTY_RESPONSE',
+                    publicMessage: 'AI service returned an empty response',
+                    metadata: {
+                        finishReason: response.candidates?.[0]?.finishReason,
+                        candidatesCount: response.candidates?.length || 0,
+                        usageMetadata: response.usageMetadata
+                    }
+                });
+            }
+
+            // Parse the structured JSON response
+            const structuredData = JSON.parse(text);
+
+            return {
+                data: structuredData,
+                model: 'gemini-1.5-flash',
+                tokens_used: response.usageMetadata?.totalTokenCount || 0,
+                response_time_ms: Date.now() - startTime
+            };
+
+        } catch (error) {
+            console.error('Error generating structured response:', error);
+
+            if (error instanceof ApiError) {
+                throw error;
+            }
+
+            throw new ApiError('Failed to generate structured response', {
+                status: 500,
+                errorType: 'AI_SERVICE_ERROR',
+                publicMessage: 'AI service is temporarily unavailable. Please try again.',
+                metadata: {
+                    model: 'gemini-1.5-flash',
+                    error: error.message
+                }
+            });
+        }
+    }
 }
 
 // Export singleton instance

@@ -456,10 +456,10 @@ class ListService {
     }
 
     /**
-     * Get all lists shared with a specific group
+     * Get all lists shared with a specific group, including public lists owned by group members
      * @param {number} groupId - ID of the group
      * @param {number} userId - ID of the user making the request
-     * @returns {Promise<Array>} - Lists shared with the group
+     * @returns {Promise<Array>} - Lists shared with the group + public lists owned by group members/admins
      */
     async getListsSharedWithGroup(groupId, userId) {
         try {
@@ -493,14 +493,37 @@ class ListService {
                 }
             });
 
-            // Filter lists where the list owner is a member of the group
-            const filteredLists = sharedLists.filter(list => {
+            // Get all group member and admin IDs
+            const groupMemberIds = [...(group.members || []), ...(group.adminIds || []), group.ownerId];
+
+            // Get public lists owned by group members and admins
+            const publicListsByMembers = await List.findAll({
+                where: {
+                    ownerId: { [Op.in]: groupMemberIds },
+                    public: true
+                }
+            });
+
+            // Combine shared lists and public lists, remove duplicates
+            const allListsMap = new Map();
+            
+            // Add shared lists (filter by owner membership)
+            sharedLists.forEach(list => {
                 const listOwnerId = list.ownerId;
                 const isMember = group.members && group.members.includes(listOwnerId);
                 const isAdmin = group.adminIds && group.adminIds.includes(listOwnerId);
                 const isOwner = group.ownerId === listOwnerId;
-                return isMember || isAdmin || isOwner;
+                if (isMember || isAdmin || isOwner) {
+                    allListsMap.set(list.id, list);
+                }
             });
+
+            // Add public lists by members/admins
+            publicListsByMembers.forEach(list => {
+                allListsMap.set(list.id, list);
+            });
+
+            const filteredLists = Array.from(allListsMap.values());
 
             // Add number of non-deleted items for each list
             const listsWithCount = await Promise.all(filteredLists.map(async (list) => {

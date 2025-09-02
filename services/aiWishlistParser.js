@@ -17,48 +17,80 @@ class AIWishlistParser {
         }
 
         // Truncate HTML if it's too long to avoid token limits
-        const truncatedHTML = htmlContent.length > this.maxHtmlLength 
+        const truncatedHTML = htmlContent.length > this.maxHtmlLength
             ? htmlContent.substring(0, this.maxHtmlLength) + '...[truncated]'
             : htmlContent;
 
         const prompt = this.buildWishlistParsingPrompt(truncatedHTML, options);
-        
+        const jsonSchema = this.buildWishlistSchema(options);
+
         let lastError;
         for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
             try {
-                console.log(`[AI-PARSER] Attempt ${attempt}/${this.maxRetries} - Sending ${truncatedHTML.length} chars to Gemini AI...`);
-                
-                const aiResponse = await geminiAIService.generateResponse(prompt, {
-                    maxTokens: 32000, // Increased for large wishlists - well within 65k limit
-                    temperature: 0.1 // Low temperature for consistent structured output
+                console.log(`[AI-PARSER] Attempt ${attempt}/${this.maxRetries} - Trying structured output...`);
+
+                const aiResponse = await geminiAIService.generateStructuredResponse(prompt, jsonSchema, {
+                    maxTokens: 500000,
+                    temperature: 0.1
                 });
 
-                console.log(`[AI-PARSER] ✅ AI response received (${aiResponse.tokens_used} tokens, ${aiResponse.response_time_ms}ms)`);
-                console.log(`[AI-PARSER] Parsing AI response into structured data...`);
+                console.log(`[AI-PARSER] ✅ Structured AI response received (${aiResponse.tokens_used} tokens, ${aiResponse.response_time_ms}ms)`);
 
-                const parsedData = this.parseAIResponse(aiResponse.response);
-                
-                console.log(`[AI-PARSER] ✅ Successfully parsed ${parsedData.length} items from AI response`);
-                
+                const validatedItems = this.validateStructuredResponse(aiResponse.data);
+                console.log(`[AI-PARSER] ✅ Successfully validated ${validatedItems.length} items from structured response`);
+
                 return {
-                    items: parsedData,
+                    items: validatedItems,
                     aiMetadata: {
                         model: aiResponse.model,
                         tokens_used: aiResponse.tokens_used,
                         response_time_ms: aiResponse.response_time_ms,
                         attempt: attempt,
-                        html_length: truncatedHTML.length
+                        html_length: truncatedHTML.length,
+                        structured_output: true
                     }
                 };
 
             } catch (error) {
                 lastError = error;
-                console.error(`[AI-PARSER] ❌ Attempt ${attempt} failed: ${error.message}`);
-                
+                console.error(`[AI-PARSER] ❌ Structured output failed: ${error.message}`);
+
+                // Fallback to text-based parsing for this attempt
+                try {
+                    console.log(`[AI-PARSER] Attempting fallback to text-based parsing...`);
+
+                    const textResponse = await geminiAIService.generateResponse(prompt, {
+                        maxTokens: 500000,
+                        temperature: 0.1
+                    });
+
+                    console.log(`[AI-PARSER] ✅ Text AI response received (${textResponse.tokens_used} tokens, ${textResponse.response_time_ms}ms)`);
+
+                    const parsedData = this.parseAIResponse(textResponse.response);
+                    console.log(`[AI-PARSER] ✅ Successfully parsed ${parsedData.length} items from text response`);
+
+                    return {
+                        items: parsedData,
+                        aiMetadata: {
+                            model: textResponse.model,
+                            tokens_used: textResponse.tokens_used,
+                            response_time_ms: textResponse.response_time_ms,
+                            attempt: attempt,
+                            html_length: truncatedHTML.length,
+                            structured_output: false,
+                            fallback_reason: 'Structured output failed'
+                        }
+                    };
+
+                } catch (textError) {
+                    console.error(`[AI-PARSER] ❌ Text fallback also failed: ${textError.message}`);
+                    lastError = textError;
+                }
+
                 if (attempt === this.maxRetries) {
                     break;
                 }
-                
+
                 // Wait before retry (exponential backoff)
                 const delay = Math.pow(2, attempt - 1) * 1000;
                 console.log(`[AI-PARSER] ⏳ Waiting ${delay}ms before retry...`);
@@ -78,35 +110,89 @@ class AIWishlistParser {
     }
 
     buildWishlistParsingPrompt(htmlContent, options = {}) {
-        const requiredFields = options.fields || ['name', 'price', 'imageUrl', 'linkUrl'];
-        
         return `You are an expert at parsing HTML content to extract product information from any website. Analyze the provided HTML and extract ALL product items that appear to be for sale or listed.
 
-IMPORTANT INSTRUCTIONS:
-1. Return ONLY a valid JSON array, no additional text or explanations
-2. Each item must be a JSON object with these exact fields: ${requiredFields.join(', ')}
-3. For price: extract only the number (e.g., "29.99"), no currency symbols or text
-4. For imageUrl: use full HTTPS URLs, convert relative URLs to absolute URLs when possible
-5. For linkUrl: use full product URLs when available, convert relative URLs to absolute when possible
-6. If a field is missing or unclear, use null
-7. Skip any items that don't appear to be actual products (like navigation, ads, etc.)
-8. Look for common product indicators: titles, prices, images, product links
-9. Products can be in various formats: grid layouts, list layouts, cards, etc.
-
-Expected JSON format:
-[
-  {
-    "name": "Product Name Here",
-    "price": "29.99",
-    "imageUrl": "https://example.com/images/product.jpg",
-    "linkUrl": "https://example.com/product/123"
-  }
-]
+INSTRUCTIONS:
+1. For price: extract only the number (e.g., "29.99"), no currency symbols or text
+2. For imageUrl: use full HTTPS URLs, convert relative URLs to absolute URLs when possible  
+3. For linkUrl: use full product URLs when available, convert relative URLs to absolute when possible
+4. If a field is missing or unclear, use null
+5. Skip any items that don't appear to be actual products (like navigation, ads, etc.)
+6. Look for common product indicators: titles, prices, images, product links
+7. Products can be in various formats: grid layouts, list layouts, cards, etc.
 
 HTML Content to analyze:
-${htmlContent}
+${htmlContent}`;
+    }
 
-Return the JSON array now:`;
+    buildWishlistSchema(options = {}) {
+        // Build schema for Gemini's structured output format
+        return {
+            type: "object",
+            properties: {
+                items: {
+                    type: "array",
+                    description: "Array of products extracted from the HTML",
+                    items: {
+                        type: "object",
+                        properties: {
+                            name: {
+                                type: "string",
+                                description: "Product or item name/title"
+                            },
+                            price: {
+                                type: "string",
+                                description: "Price as string (numbers only, e.g. '29.99') or empty string if not found"
+                            },
+                            imageUrl: {
+                                type: "string",
+                                description: "Full HTTPS URL to product image or empty string if not found"
+                            },
+                            linkUrl: {
+                                type: "string",
+                                description: "Full product URL or empty string if not found"
+                            }
+                        },
+                        required: ["name"]
+                    }
+                }
+            },
+            required: ["items"]
+        };
+    }
+
+    validateStructuredResponse(structuredData) {
+        if (!structuredData || typeof structuredData !== 'object') {
+            throw new ApiError('Structured response is not an object', {
+                status: 500,
+                errorType: 'INVALID_STRUCTURED_RESPONSE',
+                publicMessage: 'AI service returned invalid structured data'
+            });
+        }
+
+        if (!Array.isArray(structuredData.items)) {
+            throw new ApiError('Structured response items is not an array', {
+                status: 500,
+                errorType: 'INVALID_STRUCTURED_RESPONSE',
+                publicMessage: 'AI service returned invalid structured data'
+            });
+        }
+
+        // Validate and clean each item using existing validation logic
+        const validItems = structuredData.items.map((item, index) => {
+            // Convert empty strings to null for consistency with existing logic
+            const processedItem = {
+                name: item.name || null,
+                price: (item.price && item.price.trim() !== '') ? item.price : null,
+                imageUrl: (item.imageUrl && item.imageUrl.trim() !== '') ? item.imageUrl : null,
+                linkUrl: (item.linkUrl && item.linkUrl.trim() !== '') ? item.linkUrl : null
+            };
+            return this.validateAndCleanItem(processedItem, index);
+        }).filter(item => item !== null);
+
+        console.log(`Structured parsing successful: validated ${validItems.length} valid items from ${structuredData.items.length} AI results`);
+
+        return validItems;
     }
 
     parseAIResponse(aiResponseText) {
@@ -121,19 +207,19 @@ Return the JSON array now:`;
         try {
             // Clean the response - remove any text before/after JSON
             let cleanedResponse = aiResponseText.trim();
-            
+
             // Find JSON array boundaries
             const arrayStart = cleanedResponse.indexOf('[');
             const arrayEnd = cleanedResponse.lastIndexOf(']') + 1;
-            
+
             if (arrayStart === -1 || arrayEnd === 0) {
                 throw new Error('No JSON array found in AI response');
             }
-            
+
             cleanedResponse = cleanedResponse.substring(arrayStart, arrayEnd);
-            
+
             const parsedData = JSON.parse(cleanedResponse);
-            
+
             if (!Array.isArray(parsedData)) {
                 throw new Error('AI response is not an array');
             }
@@ -144,13 +230,13 @@ Return the JSON array now:`;
             }).filter(item => item !== null);
 
             console.log(`AI parsing successful: extracted ${validItems.length} valid items from ${parsedData.length} AI results`);
-            
+
             return validItems;
 
         } catch (error) {
             console.error('Error parsing AI response:', error.message);
             console.error('Raw AI response:', aiResponseText.substring(0, 500) + '...');
-            
+
             throw new ApiError('Invalid AI response format', {
                 status: 500,
                 errorType: 'INVALID_AI_RESPONSE',
@@ -215,7 +301,7 @@ Return the JSON array now:`;
             }
 
             const urlObj = new URL(url);
-            
+
             // Basic URL validation
             if (!['http:', 'https:'].includes(urlObj.protocol)) {
                 return null;
@@ -239,11 +325,11 @@ Return the JSON array now:`;
 
     async parseWithFallback(htmlContent, traditionalParsingFn, options = {}) {
         console.log(`[AI-PARSER] Starting parseWithFallback - trying AI parsing first...`);
-        
+
         try {
             // Try AI parsing first
             const aiResult = await this.parseWishlistHTML(htmlContent, options);
-            
+
             if (aiResult.items && aiResult.items.length > 0) {
                 console.log(`[AI-PARSER] ✅ AI parsing successful - found ${aiResult.items.length} items`);
                 return {
@@ -265,7 +351,7 @@ Return the JSON array now:`;
             console.log(`[AI-PARSER] Starting traditional scraping fallback...`);
             const traditionalResult = await traditionalParsingFn();
             console.log(`[AI-PARSER] ✅ Traditional parsing completed`);
-            
+
             return {
                 success: true,
                 items: traditionalResult.items || [],

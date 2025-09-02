@@ -3,6 +3,7 @@ const geminiAIService = require('./geminiAIService');
 const imageProcessingService = require('./imageProcessingService');
 const urlImportService = require('./urlImportService');
 const aiWishlistParser = require('./aiWishlistParser');
+const csvImportService = require('./csvImportService');
 const { Job } = require('../models');
 const { Op } = require('sequelize');
 
@@ -73,6 +74,8 @@ class JobProcessorService {
             let result;
             if (jobType === 'wishlist_import') {
                 result = await this.processWishlistImportJob(job);
+            } else if (jobType === 'csv_import') {
+                result = await this.processCsvImportJob(job);
             } else {
                 result = await this.processItemFetchJob(job);
             }
@@ -297,6 +300,98 @@ class JobProcessorService {
             'item_fetch',
             512 // 512x512 square images
         );
+    }
+
+    /**
+     * Process a CSV import job
+     * @param {Object} job - Job object
+     * @returns {Promise<Object>} CSV import result
+     */
+    async processCsvImportJob(job) {
+        console.log(`[JOB_PROCESSOR] Job ${job.id}: Starting CSV import...`);
+
+        // CSV data should be stored in job metadata
+        if (!job.metadata || !job.metadata.csvData) {
+            throw new Error('No CSV data found in job metadata');
+        }
+
+        // Step 1: Parse CSV data from metadata
+        console.log(`[JOB_PROCESSOR] Job ${job.id}: Processing CSV data...`);
+        const csvBuffer = Buffer.from(job.metadata.csvData, 'base64');
+        const items = await csvImportService.parseCsv(csvBuffer);
+
+        console.log(`[JOB_PROCESSOR] Job ${job.id}: CSV parsed successfully - Found ${items.length} items`);
+
+        if (items.length === 0) {
+            console.log(`[JOB_PROCESSOR] Job ${job.id}: No items found in CSV`);
+            return {
+                totalItems: 0,
+                items: [],
+                fileName: job.metadata.fileName || 'unknown.csv',
+                processingMethod: 'csv_parsing'
+            };
+        }
+
+        // Step 2: Process images
+        console.log(`[JOB_PROCESSOR] Job ${job.id}: Processing images...`);
+        const imageUrls = csvImportService.extractImageUrls(items);
+
+        let imageProcessingResults = [];
+        if (imageUrls.length > 0) {
+            try {
+                imageProcessingResults = await imageProcessingService.processBatchImages(
+                    imageUrls,
+                    'csv_import',
+                    512
+                );
+                const successCount = imageProcessingResults.filter(r => r.imageId !== null).length;
+                console.log(`[JOB_PROCESSOR] Job ${job.id}: Image processing complete: ${successCount}/${imageUrls.length} successful`);
+            } catch (error) {
+                console.error(`[JOB_PROCESSOR] Job ${job.id}: Image processing failed:`, error);
+                imageProcessingResults = imageUrls.map(url => ({
+                    url: url,
+                    imageId: null,
+                    error: 'Image processing failed'
+                }));
+            }
+        }
+
+        // Step 3: Map images to items
+        const urlToImageId = {};
+        imageProcessingResults.forEach(result => {
+            if (result.imageId !== null) {
+                urlToImageId[result.url] = result.imageId;
+            }
+        });
+
+        const processedItems = items.map(item => {
+            const processedItem = { ...item };
+
+            if (item.imageUrl && urlToImageId[item.imageUrl]) {
+                processedItem.imageId = urlToImageId[item.imageUrl];
+                delete processedItem.imageUrl;
+            } else if (item.imageUrl) {
+                console.warn(`[JOB_PROCESSOR] Job ${job.id}: No processed image for URL: ${item.imageUrl}`);
+            }
+
+            return processedItem;
+        });
+
+        const imageSuccessCount = imageProcessingResults.filter(r => r.imageId !== null).length;
+
+        console.log(`[JOB_PROCESSOR] Job ${job.id}: CSV import completed - ${items.length} items, ${imageSuccessCount} images processed`);
+
+        return {
+            fileName: job.metadata.fileName || 'unknown.csv',
+            totalItems: items.length,
+            items: processedItems,
+            processingMethod: 'csv_parsing',
+            imageProcessing: {
+                totalImages: imageUrls.length,
+                successfulImages: imageSuccessCount,
+                failedImages: imageUrls.length - imageSuccessCount
+            }
+        };
     }
 
     /**

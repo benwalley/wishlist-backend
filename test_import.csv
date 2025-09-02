@@ -1,0 +1,5 @@
+name,price,imageUrl,linkUrl,description
+"Wireless Headphones",99.99,"https://example.com/images/headphones.jpg","https://example.com/products/headphones","High-quality wireless headphones with noise cancellation"
+"Coffee Mug",15.50,"https://example.com/images/mug.jpg","","Ceramic coffee mug with heat-resistant handle"
+"Gaming Mouse","25","https://example.com/images/mouse.jpg","https://example.com/products/mouse","Ergonomic gaming mouse with RGB lighting"
+"Notebook Set",,"https://example.com/images/notebook.jpg","","Set of 3 lined notebooks for journaling"

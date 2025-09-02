@@ -5,24 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ac633e9b-c999-467f-b1d6-59c1a67c9c75" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0/storage_v2/_src_/database/wishlist.xbVDxg/schema/public.abK9xQ.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/306ea32d-a276-48bd-b4cc-e79cea2571c0/storage_v2/_src_/database/wishlist.xbVDxg/schema/public.abK9xQ.meta" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/moneyController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/moneyController.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/notificationController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/notificationController.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/publicItemController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/publicItemController.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/usersController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/usersController.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/notification.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/notification.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/eventService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/eventService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/aiWishlistParser.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/aiWishlistParser.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/services/geminiAIService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/geminiAIService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/giftTrackingService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/giftTrackingService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/groupService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/groupService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/listItemService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listItemService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/jobProcessorService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/jobProcessorService.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/services/listService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/notificationService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/notificationService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/proposalService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/proposalService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/qaService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/qaService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/userService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/userService.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -199,7 +188,7 @@
       <workItem from="1755972467791" duration="14340000" />
       <workItem from="1756177380376" duration="3000" />
       <workItem from="1756344557176" duration="3749000" />
-      <workItem from="1756429285870" duration="21164000" />
+      <workItem from="1756429285870" duration="32576000" />
     </task>
     <servers />
   </component>
