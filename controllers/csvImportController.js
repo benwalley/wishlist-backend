@@ -2,6 +2,7 @@ const csvImportService = require('../services/csvImportService');
 const imageProcessingService = require('../services/imageProcessingService');
 const { Job } = require('../models');
 const { ApiError } = require('../middleware/errorHandler');
+const onDemandJobService = require('../services/onDemandJobService');
 
 /**
  * Process CSV file and return items without saving to database
@@ -182,6 +183,9 @@ exports.startCsvImport = async (req, res, next) => {
         });
 
         console.log(`User ${userId} started CSV import job ${job.id} for file: ${file.originalname}`);
+
+        // Execute the job immediately (non-blocking)
+        onDemandJobService.executeJob(job);
 
         res.status(201).json({
             success: true,

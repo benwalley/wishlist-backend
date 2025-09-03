@@ -5,13 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ac633e9b-c999-467f-b1d6-59c1a67c9c75" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/.env.example" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/aiWishlistParser.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/aiWishlistParser.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/geminiAIService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/geminiAIService.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CLAUDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/CLAUDE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/asyncItemFetchController.js" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/asyncItemFetchController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server.js" beforeDir="false" afterPath="$PROJECT_DIR$/server.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/emailService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/emailService.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/services/jobProcessorService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/jobProcessorService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/listService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/listService.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -188,7 +188,7 @@
       <workItem from="1755972467791" duration="14340000" />
       <workItem from="1756177380376" duration="3000" />
       <workItem from="1756344557176" duration="3749000" />
-      <workItem from="1756429285870" duration="32576000" />
+      <workItem from="1756429285870" duration="40329000" />
     </task>
     <servers />
   </component>

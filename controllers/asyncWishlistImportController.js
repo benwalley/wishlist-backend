@@ -1,5 +1,6 @@
 const { Job } = require('../models');
 const { ApiError } = require('../middleware/errorHandler');
+const onDemandJobService = require('../services/onDemandJobService');
 
 /**
  * Start an async wishlist import job
@@ -57,6 +58,9 @@ async function startWishlistImport(req, res, next) {
         });
 
         console.log(`User ${userId} started wishlist import job ${job.id} for URL: ${cleanUrl}`);
+
+        // Execute the job immediately (non-blocking)
+        onDemandJobService.executeJob(job);
 
         res.status(201).json({
             success: true,

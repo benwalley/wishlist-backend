@@ -1,5 +1,6 @@
 const { Job } = require('../models');
 const { ApiError } = require('../middleware/errorHandler');
+const onDemandJobService = require('../services/onDemandJobService');
 
 /**
  * Start an async item fetch job
@@ -54,6 +55,9 @@ async function startItemFetch(req, res, next) {
         });
 
         console.log(`User ${userId} started item fetch job ${job.id} for URL: ${cleanUrl}`);
+
+        // Execute the job immediately (non-blocking)
+        onDemandJobService.executeJob(job);
 
         res.status(201).json({
             success: true,

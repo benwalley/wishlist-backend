@@ -10,7 +10,7 @@ if (!globalThis.fetch) {
 const app = require('./app');
 const models = require('./models');
 const SchedulerService = require('./services/schedulerService');
-const jobProcessorService = require('./services/jobProcessorService');
+const onDemandJobService = require('./services/onDemandJobService');
 const port = process.env.PORT || 3000;
 
 (async () => {
@@ -21,13 +21,10 @@ const port = process.env.PORT || 3000;
         // Initialize scheduled tasks
         SchedulerService.init();
 
-        // Initialize job processor service
-        jobProcessorService.start();
-
         // Schedule periodic cleanup of old jobs (every 6 hours)
         const cron = require('node-cron');
         cron.schedule('0 */6 * * *', () => {
-            jobProcessorService.cleanupOldJobs(24); // Remove jobs older than 24 hours
+            onDemandJobService.cleanupOldJobs(24); // Remove jobs older than 24 hours
         });
 
         app.listen(port, () => {
@@ -37,7 +34,6 @@ const port = process.env.PORT || 3000;
         // Graceful shutdown handlers
         const gracefulShutdown = () => {
             console.log('Shutting down gracefully...');
-            jobProcessorService.stop();
             SchedulerService.stop();
             process.exit(0);
         };
