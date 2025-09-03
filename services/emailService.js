@@ -32,7 +32,7 @@ class EmailService {
                     pass: process.env.MAILGUN_SMTP_PASSWORD
                 }
             };
-            this.transporter = nodemailer.createTransporter(mailgunConfig);
+            this.transporter = nodemailer.createTransport(mailgunConfig);
         } else {
             // Use regular SMTP transport
             const emailConfig = {
