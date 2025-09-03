@@ -196,8 +196,8 @@ class EmailService {
                         </div>
                         <div class="content">
                             <p>Hello${userName ? ` ${userName}` : ''},</p>
-                            <p>${inviterName} has invited you to join the <span class="group-name">"${groupName}"</span> group on Wishlist!</p>
-                            <p>Wishlist is a platform where you can create and share wishlists with friends and family, making gift-giving easier and more meaningful.</p>
+                            <p>${inviterName} has invited you to join the <span class="group-name">"${groupName}"</span> group on Wishlist Website!</p>
+                            <p>Wishlist Website is a platform where you can create and share wishlists with friends and family, making gift-giving easier and more meaningful.</p>
                             <p>Join us to:</p>
                             <ul>
                                 <li>Create and manage your personal wishlists</li>
@@ -206,9 +206,9 @@ class EmailService {
                                 <li>Coordinate gifts to avoid duplicates</li>
                             </ul>
                             <p style="text-align: center; margin: 30px 0;">
-                                <a href="${signupUrl}" class="button">Join Wishlist</a>
+                                <a href="${signupUrl}" class="button" style="color: white;">Join Wishlist</a>
                             </p>
-                            <p>Once you create your account, you'll automatically be added to the "${groupName}" group and can start exploring everyone's wishlists!</p>
+                            <p>Once you create your account, you'll be able to join the "${groupName}" group and can start exploring everyone's wishlists!</p>
                         </div>
                         <div class="footer">
                             <p>If you're having trouble clicking the button, copy and paste the following URL into your browser:</p>
