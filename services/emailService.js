@@ -112,23 +112,27 @@ class EmailService {
 
     async sendPasswordResetEmail(email, resetToken, userName) {
         const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+        const logoUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/logo.png`;
 
         const subject = 'Password Reset Request';
         const htmlContent = `
             <html>
                 <head>
                     <style>
-                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        body { font-family: "Inter", Arial, sans-serif; line-height: 1.6; color: #333; }
                         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
                         .header { background-color: #f8f9fa; padding: 20px; text-align: center; }
+                        .logo { width: 64px; height: 64px; margin: 0 auto 20px; }
                         .content { padding: 20px; }
-                        .button { display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; }
+                        .button { display: inline-block; padding: 12px 24px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 8px; font-weight: 500; }
+                        .button:hover { background-color: #4338ca; }
                         .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #666; }
                     </style>
                 </head>
                 <body>
                     <div class="container">
                         <div class="header">
+                            <img src="${logoUrl}" alt="Wishlist Logo" class="logo" />
                             <h1>Password Reset Request</h1>
                         </div>
                         <div class="content">
@@ -165,26 +169,30 @@ class EmailService {
     }
 
     async sendGroupInvitationEmail(email, groupName, inviterName, userName) {
-        const signupUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/signup`;
+        const signupUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/`;
+        const logoUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/logo.png`;
 
         const subject = `You've been invited to join "${groupName}" on Wishlist`;
         const htmlContent = `
             <html>
                 <head>
                     <style>
-                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        body { font-family: "Inter", Arial, sans-serif; line-height: 1.6; color: #333; }
                         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
                         .header { background-color: #f8f9fa; padding: 20px; text-align: center; }
+                        .logo { width: 64px; height: 64px; margin: 0 auto 20px; }
                         .content { padding: 20px; }
-                        .button { display: inline-block; padding: 12px 24px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px; }
-                        .group-name { color: #007bff; font-weight: bold; }
+                        .button { display: inline-block; padding: 12px 24px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 8px; font-weight: 500; }
+                        .button:hover { background-color: #4338ca; }
+                        .group-name { color: #4f46e5; font-weight: bold; }
                         .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #666; }
                     </style>
                 </head>
                 <body>
                     <div class="container">
                         <div class="header">
-                            <h1>🎁 You're Invited!</h1>
+                            <img src="${logoUrl}" alt="Wishlist Logo" class="logo" />
+                            <h1>You're Invited!</h1>
                         </div>
                         <div class="content">
                             <p>Hello${userName ? ` ${userName}` : ''},</p>

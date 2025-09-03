@@ -5,11 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ac633e9b-c999-467f-b1d6-59c1a67c9c75" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/.env.example" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/services/emailService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/emailService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/passwordResetService.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/passwordResetService.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -67,6 +64,7 @@
       <recent name="$PROJECT_DIR$/routes/auth" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/public" />
       <recent name="$PROJECT_DIR$/controllers/images" />
       <recent name="$PROJECT_DIR$/middleware/auth" />
       <recent name="$PROJECT_DIR$/routes/users" />
@@ -186,7 +184,7 @@
       <workItem from="1755972467791" duration="14340000" />
       <workItem from="1756177380376" duration="3000" />
       <workItem from="1756344557176" duration="3749000" />
-      <workItem from="1756429285870" duration="44765000" />
+      <workItem from="1756429285870" duration="45704000" />
     </task>
     <servers />
   </component>
