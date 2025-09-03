@@ -15,7 +15,7 @@ class PasswordResetService {
             });
         }
 
-        const user = await User.findOne({ 
+        const user = await User.findOne({
             where: { email, isActive: true },
             attributes: ['id', 'email', 'name']
         });
@@ -30,9 +30,9 @@ class PasswordResetService {
 
         await PasswordReset.update(
             { used: true },
-            { 
-                where: { 
-                    userId: user.id, 
+            {
+                where: {
+                    userId: user.id,
                     used: false,
                     expiresAt: { [models.Sequelize.Op.gt]: new Date() }
                 }
@@ -41,7 +41,7 @@ class PasswordResetService {
 
         const resetToken = crypto.randomBytes(32).toString('hex');
         const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-        
+
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
         await PasswordReset.create({
@@ -78,9 +78,9 @@ class PasswordResetService {
         }
 
         const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-        
+
         const resetRecord = await PasswordReset.findOne({
-            where: { 
+            where: {
                 token: hashedToken,
                 used: false,
                 expiresAt: { [models.Sequelize.Op.gt]: new Date() }
@@ -111,18 +111,10 @@ class PasswordResetService {
             });
         }
 
-        if (newPassword.length < 6) {
-            throw new ApiError('Password must be at least 6 characters long.', {
-                status: 400,
-                errorType: 'VALIDATION_ERROR',
-                publicMessage: 'Password must be at least 6 characters long.'
-            });
-        }
-
         const resetRecord = await this.validateResetToken(token);
-        
+
         const hashedPassword = await bcrypt.hash(newPassword, 10);
-        
+
         await User.update(
             { password: hashedPassword },
             { where: { id: resetRecord.userId } }

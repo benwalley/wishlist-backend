@@ -38,12 +38,17 @@ class EmailService {
             const emailConfig = {
                 host: process.env.SMTP_HOST || 'localhost',
                 port: process.env.SMTP_PORT || 587,
-                secure: process.env.SMTP_SECURE === 'true',
-                auth: {
+                secure: process.env.SMTP_SECURE === 'true'
+            };
+
+            // Only add auth if credentials are provided
+            if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+                emailConfig.auth = {
                     user: process.env.SMTP_USER,
                     pass: process.env.SMTP_PASS
-                }
-            };
+                };
+            }
+
             this.transporter = nodemailer.createTransport(emailConfig);
         }
     }
@@ -130,7 +135,7 @@ class EmailService {
                             <p>Hello ${userName},</p>
                             <p>We received a request to reset your password. Click the button below to reset your password:</p>
                             <p style="text-align: center; margin: 30px 0;">
-                                <a href="${resetUrl}" class="button">Reset Password</a>
+                                <a href="${resetUrl}" class="button" style="color: white;">Reset Password</a>
                             </p>
                             <p>If you did not request this password reset, please ignore this email. Your password will remain unchanged.</p>
                             <p>This link will expire in 15 minutes for security purposes.</p>
