@@ -12,6 +12,12 @@
 - **Reference**: Use `.env.example` for required variables
 - **Setup**: Copy `.env.example` to `.env` and fill in your values
 
+### Email Configuration
+- **SES**: Set `EMAIL_SERVICE=SES` with AWS credentials
+- **Mailgun**: Set `EMAIL_SERVICE=MAILGUN` with Mailgun SMTP credentials or use Heroku addon
+- **SMTP**: Set `EMAIL_SERVICE=SMTP` with SMTP server details
+- **Heroku Mailgun Addon**: Run `heroku addons:create mailgun:starter` for automatic setup
+
 ## Code Style & Conventions
 - **Architecture**: Controller → Service → Model pattern
 - **Error Handling**: Try/catch blocks with console.error and consistent error responses

@@ -11,7 +11,7 @@ class EmailService {
     }
 
     initializeTransporter() {
-        // Check if we're using SES or regular SMTP
+        // Check email service type
         if (process.env.EMAIL_SERVICE === 'SES') {
             // Use AWS SDK v3 SES client
             this.sesClient = new SESv2Client({
@@ -21,6 +21,18 @@ class EmailService {
                     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
                 }
             });
+        } else if (process.env.EMAIL_SERVICE === 'MAILGUN') {
+            // Use Mailgun SMTP transport
+            const mailgunConfig = {
+                host: 'smtp.mailgun.org',
+                port: 587,
+                secure: false, // Use TLS
+                auth: {
+                    user: process.env.MAILGUN_SMTP_LOGIN,
+                    pass: process.env.MAILGUN_SMTP_PASSWORD
+                }
+            };
+            this.transporter = nodemailer.createTransporter(mailgunConfig);
         } else {
             // Use regular SMTP transport
             const emailConfig = {
