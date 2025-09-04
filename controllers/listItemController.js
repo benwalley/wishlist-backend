@@ -284,7 +284,7 @@ exports.bulkDelete = async (req, res, next) => {
             const validItemIds = items.map(item => item.id);
 
             // Notify users who have marked these items as "gotten" before deleting
-            await ListItemService.notifyUsersOfDeletedGottenItems(validItemIds, userId, transaction);
+            await ListItemService.notifyUsersOfDeletedGottenItems(validItemIds, transaction);
 
             // Soft delete all items (set deleted: true)
             const updatedCount = await ListItem.update(

@@ -607,7 +607,7 @@ class ListItemService {
             const accessibleItems = [];
 
             for (const item of items) {
-                const canView = PermissionService.canUserViewItem(item, userId, true);
+                const canView = await PermissionService.canUserViewItem(item, userId, true);
 
                 if (canView) {
                     // Filter gotten/goInOn data based on permissions

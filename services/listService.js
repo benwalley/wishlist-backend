@@ -136,46 +136,16 @@ class ListService {
                 };
             }
 
-            let allowedToViewList = false;
-
-            // Check if the user is the owner of the list
-            if (String(list.ownerId) === String(userId)) {
-                allowedToViewList = true;
-            }
-
-            // Check if the list is public
-            if (list.public === true) {
-                allowedToViewList = true;
-            }
-
-            // Check if the user is in the "visibleToUsers" array
-            if (!allowedToViewList && list.visibleToUsers.includes(String(userId))) {
-                allowedToViewList = true;
-            }
-
-            // Check if the user is in any group that is in the "visibleToGroups" array
-            if (!allowedToViewList) {
-                const userGroups = await Group.findAll({
-                    where: {
-                        [Op.or]: [
-                            { ownerId: userId },
-                            { members: { [Op.contains]: [userId] } },
-                            { adminIds: { [Op.contains]: [userId] } }
-                        ]
-                    },
-                    attributes: ['id']
-                });
-                const userGroupIds = userGroups.map(group => group.id);
-
-                allowedToViewList = list.visibleToGroups.some(groupId => userGroupIds.includes(groupId));
-            }
-
-            if (!allowedToViewList) {
+            // Check if user has permission to view this list
+            const listAccess = await PermissionService.canUserAccessList(userId, id);
+            if (!listAccess.canAccess) {
                 return {
                     success: false,
-                    message: 'You are not allowed to view this list'
+                    message: listAccess.error || 'You are not allowed to view this list'
                 };
             }
+
+            const allowedToViewList = true;
 
             // First get all non-deleted items in this list with getting and goInOn data
             const allListItems = await ListItem.findAll({
@@ -201,9 +171,12 @@ class ListService {
             });
 
             // Filter items based on visibility permissions
-            const listItems = allListItems.filter(item =>
-                PermissionService.canUserViewItem(item, userId, allowedToViewList)
-            );
+            const listItems = [];
+            for (const item of allListItems) {
+                if (await PermissionService.canUserViewItem(item, userId, allowedToViewList)) {
+                    listItems.push(item);
+                }
+            }
 
             return {
                 success: true,
@@ -506,7 +479,7 @@ class ListService {
 
             // Combine shared lists and public lists, remove duplicates
             const allListsMap = new Map();
-            
+
             // Add shared lists (filter by owner membership)
             sharedLists.forEach(list => {
                 const listOwnerId = list.ownerId;
@@ -635,7 +608,7 @@ class ListService {
             // Add number of items for each accessible list (conditional counting)
             const listsWithCount = await Promise.all(accessibleLists.map(async (list) => {
                 let itemCount;
-                
+
                 // If user has full access to the list, count all non-deleted items
                 if (hasFullAccess(list)) {
                     itemCount = await ListItem.count({
@@ -721,14 +694,14 @@ class ListService {
             // 5. Get accessible users and their public lists
             const accessibleUsers = await UserService.getAccessibleUsers(userId);
             const accessibleUserIds = accessibleUsers.map(user => user.id);
-            
+
             // Get public lists owned by accessible users (excluding current user's own lists)
             const publicListsByAccessibleUsers = await List.findAll({
                 where: {
                     public: true,
-                    ownerId: { 
-                        [Op.in]: accessibleUserIds, 
-                        [Op.ne]: String(userId) 
+                    ownerId: {
+                        [Op.in]: accessibleUserIds,
+                        [Op.ne]: String(userId)
                     }
                 }
             });
@@ -797,6 +770,7 @@ class ListService {
             // Check if user has access to the list (for matchListVisibility logic)
             const listAccess = await PermissionService.canUserAccessList(userId, listId);
             const hasListAccess = listAccess.canAccess;
+            console.log({hasListAccess});
 
             // Get all items in the list that are not deleted
             const itemsInList = await ListItem.findAll({
@@ -812,7 +786,7 @@ class ListService {
             let viewableCount = 0;
             for (const item of itemsInList) {
                 // Use existing permission logic to check if user can view the item
-                if (PermissionService.canUserViewItem(item, userId, hasListAccess)) {
+                if (await PermissionService.canUserViewItem(item, userId, hasListAccess)) {
                     viewableCount++;
                 }
             }

@@ -261,7 +261,7 @@ class ItemViewService {
                 }
 
                 // Use existing permission logic to check if user can view the item
-                if (PermissionService.canUserViewItem(item, userId, hasListAccess)) {
+                if (await PermissionService.canUserViewItem(item, userId, hasListAccess)) {
                     unviewedCount++;
                 }
             }

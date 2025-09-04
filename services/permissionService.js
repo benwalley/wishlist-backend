@@ -139,13 +139,19 @@ class PermissionService {
             }
 
             // Check if user is in visibleToUsers array
-            if (list.visibleToUsers && list.visibleToUsers.includes(String(userId))) {
+            if (list.visibleToUsers && list.visibleToUsers.map(id => String(id)).includes(String(userId))) {
                 return { canAccess: true, list };
             }
 
             // Check if user is in any group that has access to the list
-            // This would require group lookup - for now, return false
-            // TODO: Add group-based access check if needed
+            if (list.visibleToGroups && Array.isArray(list.visibleToGroups) && list.visibleToGroups.length > 0) {
+                const userGroups = await UserService.getUserGroups(userId);
+                const userGroupIds = userGroups.map(group => group.id);
+                
+                if (list.visibleToGroups.some(groupId => userGroupIds.includes(Number(groupId)))) {
+                    return { canAccess: true, list };
+                }
+            }
 
             return {
                 canAccess: false,
@@ -167,17 +173,27 @@ class PermissionService {
      * @param {Object} item - The list item to check
      * @param {number|string} userId - The ID of the user
      * @param {boolean} hasListAccess - Whether the user has access to the list this item belongs to
-     * @returns {boolean} - True if the user can view the item, false otherwise
+     * @returns {Promise<boolean>} - True if the user can view the item, false otherwise
      */
-    static canUserViewItem(item, userId, hasListAccess) {
+    static async canUserViewItem(item, userId, hasListAccess) {
         // User created the item
         if (String(item.createdById) === String(userId)) {
             return true;
         }
 
         // Item is explicitly shared with user
-        if (item.visibleToUsers && item.visibleToUsers.includes(userId)) {
+        if (item.visibleToUsers && item.visibleToUsers.map(id => String(id)).includes(String(userId))) {
             return true;
+        }
+
+        // Item is shared with groups that the user is a member of
+        if (item.visibleToGroups && Array.isArray(item.visibleToGroups) && item.visibleToGroups.length > 0) {
+            const userGroups = await UserService.getUserGroups(userId);
+            const userGroupIds = userGroups.map(group => group.id);
+            
+            if (item.visibleToGroups.some(groupId => userGroupIds.includes(Number(groupId)))) {
+                return true;
+            }
         }
 
         // Item is public
