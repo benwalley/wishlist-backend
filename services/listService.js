@@ -16,22 +16,11 @@ class ListService {
     async bulkShareListsWithGroup(listIds, groupId, userId) {
         try {
             // Verify group exists and user has access to it
-            const group = await Group.findByPk(groupId);
-            if (!group) {
+            const groupAccess = await PermissionService.canUserAccessGroup(userId, groupId);
+            if (!groupAccess.canAccess) {
                 return {
                     success: false,
-                    message: 'Group not found'
-                };
-            }
-
-            // Check if user is a member, admin, or owner of the group
-            const isMember = group.members && group.members.includes(userId);
-            const isAdmin = group.adminIds && group.adminIds.includes(userId);
-            const isOwner = group.ownerId === userId;
-            if (!isMember && !isAdmin && !isOwner) {
-                return {
-                    success: false,
-                    message: 'You do not have access to this group'
+                    message: groupAccess.error
                 };
             }
 
@@ -436,26 +425,16 @@ class ListService {
      */
     async getListsSharedWithGroup(groupId, userId) {
         try {
-            // First verify the user is in the group
-            const group = await Group.findByPk(groupId);
-
-            if (!group) {
+            // Verify user has access to group
+            const groupAccess = await PermissionService.canUserAccessGroup(userId, groupId);
+            if (!groupAccess.canAccess) {
                 return {
                     success: false,
-                    message: 'Group not found'
+                    message: groupAccess.error
                 };
             }
 
-            // Check if the user is a member, admin, or owner of the group
-            const isMember = group.members && group.members.includes(userId);
-            const isAdmin = group.adminIds && group.adminIds.includes(userId);
-            const isOwner = group.ownerId === userId;
-            if (!isMember && !isAdmin && !isOwner) {
-                return {
-                    success: false,
-                    message: 'You do not have access to this group'
-                };
-            }
+            const group = groupAccess.group;
 
             // Get all lists shared with this group
             const sharedLists = await List.findAll({
@@ -498,14 +477,10 @@ class ListService {
 
             const filteredLists = Array.from(allListsMap.values());
 
-            // Add number of non-deleted items for each list
+            // Add number of viewable items for each list
             const listsWithCount = await Promise.all(filteredLists.map(async (list) => {
-                const itemCount = await ListItem.count({
-                    where: {
-                        lists: { [Op.contains]: [list.id] },
-                        deleted: false
-                    }
-                });
+                // Get count of items the user can actually view
+                const itemCount = await this.getViewableItemsCountForList(userId, list.id);
 
                 return {
                     ...list.toJSON(),

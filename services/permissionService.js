@@ -1,4 +1,4 @@
-const { List, ListItem, User } = require('../models');
+const { List, ListItem, User, Group } = require('../models');
 const { ApiError } = require('../middleware/errorHandler');
 const UserService = require('./userService');
 
@@ -16,6 +16,47 @@ class PermissionService {
         } catch (error) {
             console.error('Error checking parent-child relationship:', error);
             return false;
+        }
+    }
+
+    /**
+     * Check if a user has access to a group (member, admin, or owner)
+     * @param {number|string} userId - The user ID
+     * @param {number|string} groupId - The group ID
+     * @returns {Promise<{canAccess: boolean, group?: Object, error?: string}>}
+     */
+    static async canUserAccessGroup(userId, groupId) {
+        try {
+            const group = await Group.findByPk(groupId);
+            if (!group) {
+                return {
+                    canAccess: false,
+                    error: 'Group not found',
+                    errorType: 'GROUP_NOT_FOUND'
+                };
+            }
+
+            // Check if user is a member, admin, or owner of the group
+            const isMember = group.members && group.members.includes(Number(userId));
+            const isAdmin = group.adminIds && group.adminIds.includes(Number(userId));
+            const isOwner = Number(group.ownerId) === Number(userId);
+            
+            if (!isMember && !isAdmin && !isOwner) {
+                return {
+                    canAccess: false,
+                    error: 'You do not have access to this group',
+                    errorType: 'UNAUTHORIZED'
+                };
+            }
+
+            return { canAccess: true, group };
+        } catch (error) {
+            console.error('Error checking group access:', error);
+            return {
+                canAccess: false,
+                error: 'Failed to check group access',
+                errorType: 'PERMISSION_CHECK_ERROR'
+            };
         }
     }
 
@@ -236,6 +277,7 @@ class PermissionService {
             'LISTS_NOT_FOUND': 404,
             'ITEM_NOT_FOUND': 404,
             'LIST_NOT_FOUND': 404,
+            'GROUP_NOT_FOUND': 404,
             'UNAUTHORIZED': 403,
             'PERMISSION_CHECK_ERROR': 500
         };
