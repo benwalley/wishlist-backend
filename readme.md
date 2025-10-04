@@ -15,4 +15,7 @@ To start project locally
 
 `docker-compose up` with optional `--build`
 
+## Locally connect to prod database
+
+
 

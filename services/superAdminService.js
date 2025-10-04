@@ -106,7 +106,6 @@ exports.getDatabaseTables = () => {
         'Proposal',
         'ProposalParticipant',
         'Notification',
-        'Image',
         'ItemLink',
         'ItemView',
         'Getting',

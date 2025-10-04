@@ -8,5 +8,12 @@
       <jdbc-url>jdbc:postgresql://localhost:5432/wishlist</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+    <data-source source="LOCAL" name="d7jpq564f8drb5@c8qf22e50d0hk5.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com" uuid="f81585f5-c90f-4688-bbf8-5a5cedc07e16">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://c8qf22e50d0hk5.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/d7jpq564f8drb5</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>
