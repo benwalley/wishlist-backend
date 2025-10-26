@@ -161,6 +161,31 @@ exports.getById = async (req, res, next) => {
         const userId = req.user.id;
         const item = await ListItemService.getItemById(id);
 
+        // Check if user has access to at least one list that contains this item
+        let hasListAccess = false;
+        let hasExplicitListAccess = false;
+        if (item.lists && Array.isArray(item.lists) && item.lists.length > 0) {
+            for (const listId of item.lists) {
+                const accessCheck = await PermissionService.canUserAccessList(userId, listId);
+                if(accessCheck.hasExplicitAccess) {
+                    hasExplicitListAccess = true;
+                }
+                if (accessCheck.canAccess) {
+                    hasListAccess = true;
+                    break;
+                }
+            }
+        }
+
+        // Check if user can view this item
+        const canView = await PermissionService.canUserViewItem(item, userId, hasListAccess, hasExplicitListAccess);
+        if (!canView) {
+            return res.status(403).json({
+                success: false,
+                message: 'You do not have permission to view this item'
+            });
+        }
+
         // Filter gotten/goInOn data based on permissions
         const canSeeGotten = PermissionService.canUserSeeGotten(item, userId);
         let responseItem = item;

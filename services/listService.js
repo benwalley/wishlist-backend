@@ -135,6 +135,7 @@ class ListService {
             }
 
             const allowedToViewList = true;
+            const explicitlyAllowedToViewList = listAccess.explicitlyInvited;
 
             // First get all non-deleted items in this list with getting and goInOn data
             const allListItems = await ListItem.findAll({
@@ -162,7 +163,7 @@ class ListService {
             // Filter items based on visibility permissions
             const listItems = [];
             for (const item of allListItems) {
-                if (await PermissionService.canUserViewItem(item, userId, allowedToViewList)) {
+                if (await PermissionService.canUserViewItem(item, userId, allowedToViewList, explicitlyAllowedToViewList)) {
                     listItems.push(item);
                 }
             }

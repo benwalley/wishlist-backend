@@ -160,7 +160,9 @@ class PermissionService {
      * Check if a user can access a specific list
      * @param {number|string} userId - The user ID
      * @param {number|string} listId - The list ID
-     * @returns {Promise<{canAccess: boolean, list?: Object, error?: string}>}
+     * @returns {Promise<{canAccess: boolean, list?: Object, accessType?: string, explicitlyInvited?: boolean, error?: string}>}
+     * accessType: 'owner' | 'explicit_user' | 'explicit_group' | 'public'
+     * explicitlyInvited: true if user was explicitly added via visibleToUsers or visibleToGroups
      */
     static async canUserAccessList(userId, listId) {
         try {
@@ -176,17 +178,22 @@ class PermissionService {
 
             // Check if user is the owner
             if (String(list.ownerId) === String(userId)) {
-                return { canAccess: true, list };
-            }
-
-            // Check if list is public
-            if (list.public === true) {
-                return { canAccess: true, list };
+                return {
+                    canAccess: true,
+                    list,
+                    accessType: 'owner',
+                    explicitlyInvited: false
+                };
             }
 
             // Check if user is in visibleToUsers array
             if (list.visibleToUsers && list.visibleToUsers.map(id => String(id)).includes(String(userId))) {
-                return { canAccess: true, list };
+                return {
+                    canAccess: true,
+                    list,
+                    accessType: 'explicit_user',
+                    explicitlyInvited: true
+                };
             }
 
             // Check if user is in any group that has access to the list
@@ -195,8 +202,23 @@ class PermissionService {
                 const userGroupIds = userGroups.map(group => group.id);
 
                 if (list.visibleToGroups.some(groupId => userGroupIds.includes(Number(groupId)))) {
-                    return { canAccess: true, list };
+                    return {
+                        canAccess: true,
+                        list,
+                        accessType: 'explicit_group',
+                        explicitlyInvited: true
+                    };
                 }
+            }
+
+            // Check if list is public
+            if (list.public === true) {
+                return {
+                    canAccess: true,
+                    list,
+                    accessType: 'public',
+                    explicitlyInvited: false
+                };
             }
 
             return {
@@ -221,7 +243,7 @@ class PermissionService {
      * @param {boolean} hasListAccess - Whether the user has access to the list this item belongs to
      * @returns {Promise<boolean>} - True if the user can view the item, false otherwise
      */
-    static async canUserViewItem(item, userId, hasListAccess) {
+    static async canUserViewItem(item, userId, hasListAccess, explicitlyAllowedToViewList = undefined) {
         // Special handling for custom items: they are never public and ignore visibility settings
         // Custom items are only visible to users with list access (except list owner, handled in listService)
         if (item.isCustom) {
@@ -230,11 +252,16 @@ class PermissionService {
                 return true;
             }
 
+            if(explicitlyAllowedToViewList === false) {
+                return false;
+            }
+
             // User created the item (list owner)
             if (String(item.createdById) === String(userId)) {
                 return false;
             }
 
+            // manually check if they are specifically invited to see the list
             // If user has list access, they can see custom items
             if (hasListAccess) {
                 return true;
