@@ -180,12 +180,17 @@ class ListItemService {
     }
 
     // Get all non-deleted list items created by a specific user
+    // Excludes custom items unless the user is the customItemCreator
     static async getUserItems(userId) {
         try {
             const items = await ListItem.findAll({
                 where: {
                     createdById: userId,
-                    deleted: false
+                    deleted: false,
+                    [Op.or]: [
+                        { isCustom: false }, // Include non-custom items
+                        { customItemCreator: userId } // Include custom items only if user created them
+                    ]
                 },
                 include: [
                     {
@@ -509,8 +514,13 @@ class ListItemService {
                 });
             }
 
-            // Check that user is the creator of all items
-            const unauthorizedItems = items.filter(item => item.createdById !== userId);
+            // Check that user is the creator of all items or the custom item creator
+            const unauthorizedItems = items.filter(item => {
+                const isCreator = item.createdById === userId;
+                const isCustomItemCreator = item.isCustom && item.customItemCreator === userId;
+                return !isCreator && !isCustomItemCreator;
+            });
+
             if (unauthorizedItems.length > 0) {
                 const unauthorizedIds = unauthorizedItems.map(item => item.id);
                 throw new ApiError(`You do not have permission to update items: ${unauthorizedIds.join(', ')}`, {
@@ -544,6 +554,14 @@ class ListItemService {
                     // Build update object with only provided fields
                     const updateData = {};
                     if (updateItem.hasOwnProperty('isPublic')) {
+                        // Custom items can never be public
+                        if (item.isCustom && updateItem.isPublic === true) {
+                            results.failedItems.push({
+                                id: updateItem.id,
+                                reason: 'Custom items cannot be made public'
+                            });
+                            continue;
+                        }
                         updateData.isPublic = updateItem.isPublic;
                     }
                     if (updateItem.hasOwnProperty('priority')) {

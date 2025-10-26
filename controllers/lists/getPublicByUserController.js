@@ -58,13 +58,14 @@ exports.getPublicByUser = async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
 
-        // Add number of non-deleted public items for each public list
+        // Add number of non-deleted public items for each public list (excluding custom items)
         const listsWithCount = await Promise.all(publicLists.map(async (list) => {
             const itemCount = await models.ListItem.count({
                 where: {
                     lists: { [models.Sequelize.Op.contains]: [list.id] },
                     deleted: false,
-                    isPublic: true
+                    isPublic: true,
+                    isCustom: false // Custom items are never shown publicly
                 }
             });
 

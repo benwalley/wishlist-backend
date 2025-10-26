@@ -233,6 +233,10 @@ class ItemViewService {
             // Check if user has access to the list (for matchListVisibility logic)
             const listAccess = await PermissionService.canUserAccessList(userId, listId);
             const hasListAccess = listAccess.canAccess;
+            const list = listAccess.list;
+
+            // Check if user is the list owner
+            const isListOwner = list && String(list.ownerId) === String(userId);
 
             // Get all items in the list that are not deleted
             const itemsInList = await ListItem.findAll({
@@ -257,6 +261,11 @@ class ItemViewService {
             for (const item of itemsInList) {
                 // Skip if user has already viewed this item
                 if (viewedItemIds.includes(item.id)) {
+                    continue;
+                }
+
+                // Skip custom items if user is the list owner (they shouldn't see surprise items)
+                if (isListOwner && item.isCustom) {
                     continue;
                 }
 

@@ -75,12 +75,13 @@ exports.getPublicById = async (req, res) => {
             };
         }
 
-        // Get all public, non-deleted items in this list
+        // Get all public, non-deleted items in this list (excluding custom items)
         const publicItems = await models.ListItem.findAll({
             where: {
                 lists: { [models.Sequelize.Op.contains]: [list.id] },
                 deleted: false,
-                isPublic: true
+                isPublic: true,
+                isCustom: false // Custom items are never shown publicly
             },
             attributes: [
                 'id',

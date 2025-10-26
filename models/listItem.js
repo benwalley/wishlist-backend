@@ -59,6 +59,10 @@ module.exports = (sequelize) => {
             allowNull: false,
             defaultValue: false, // Defaults to false
         },
+        customItemCreator: {
+            type: DataTypes.INTEGER,
+            allowNull: true, // Nullable, only set for custom items
+        },
         deleteOnDate: {
             type: DataTypes.DATE,
             allowNull: true, // Nullable date for deletion scheduling

@@ -40,7 +40,7 @@ class PermissionService {
             const isMember = group.members && group.members.includes(Number(userId));
             const isAdmin = group.adminIds && group.adminIds.includes(Number(userId));
             const isOwner = Number(group.ownerId) === Number(userId);
-            
+
             if (!isMember && !isAdmin && !isOwner) {
                 return {
                     canAccess: false,
@@ -129,6 +129,11 @@ class PermissionService {
                 };
             }
 
+            // For custom items, allow the customItemCreator to modify
+            if (item.isCustom && item.customItemCreator && String(item.customItemCreator) === String(userId)) {
+                return { canAccess: true, item };
+            }
+
             const isItemCreator = String(item.createdById) === String(userId);
             const isParentOfCreator = await this.isParentOfUser(userId, item.createdById);
 
@@ -188,7 +193,7 @@ class PermissionService {
             if (list.visibleToGroups && Array.isArray(list.visibleToGroups) && list.visibleToGroups.length > 0) {
                 const userGroups = await UserService.getUserGroups(userId);
                 const userGroupIds = userGroups.map(group => group.id);
-                
+
                 if (list.visibleToGroups.some(groupId => userGroupIds.includes(Number(groupId)))) {
                     return { canAccess: true, list };
                 }
@@ -217,6 +222,28 @@ class PermissionService {
      * @returns {Promise<boolean>} - True if the user can view the item, false otherwise
      */
     static async canUserViewItem(item, userId, hasListAccess) {
+        // Special handling for custom items: they are never public and ignore visibility settings
+        // Custom items are only visible to users with list access (except list owner, handled in listService)
+        if (item.isCustom) {
+            // User is the custom item creator
+            if (item.customItemCreator && String(item.customItemCreator) === String(userId)) {
+                return true;
+            }
+
+            // User created the item (list owner)
+            if (String(item.createdById) === String(userId)) {
+                return false;
+            }
+
+            // If user has list access, they can see custom items
+            if (hasListAccess) {
+                return true;
+            }
+
+            // Otherwise, custom items are not visible
+            return false;
+        }
+
         // User created the item
         if (String(item.createdById) === String(userId)) {
             return true;
@@ -231,7 +258,7 @@ class PermissionService {
         if (item.visibleToGroups && Array.isArray(item.visibleToGroups) && item.visibleToGroups.length > 0) {
             const userGroups = await UserService.getUserGroups(userId);
             const userGroupIds = userGroups.map(group => group.id);
-            
+
             if (item.visibleToGroups.some(groupId => userGroupIds.includes(Number(groupId)))) {
                 return true;
             }
@@ -258,6 +285,21 @@ class PermissionService {
      * @returns {boolean} - True if the user can see gotten status, false otherwise
      */
     static canUserSeeGotten(item, userId) {
+        // For custom items, the custom item creator can see gotten status (they're coordinating the surprise)
+        // but the list owner cannot (they can't even see the item)
+        if (item.isCustom) {
+            // If user is the custom item creator, they can see gotten status
+            if (item.customItemCreator && String(item.customItemCreator) === String(userId)) {
+                return true;
+            }
+            // If user is the list owner (createdById), they can't see it (but they can't see the item anyway)
+            if (String(item.createdById) === String(userId)) {
+                return false;
+            }
+            // Other users with access can see gotten status
+            return true;
+        }
+
         // If the current user owns the item, they cannot see gotten status (prevents spoilers)
         if (String(item.createdById) === String(userId)) {
             return false;

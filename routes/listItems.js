@@ -7,6 +7,8 @@ const passport = require("passport");
 const router = express.Router();
 
 router.post('/create',  passport.authenticate('jwt', { session: false }), listItemController.create);
+router.post('/custom',  passport.authenticate('jwt', { session: false }), listItemController.createCustomItem);
+router.put('/custom/:id',  passport.authenticate('jwt', { session: false }), listItemController.updateCustomItem);
 router.post('/bulk-create',  passport.authenticate('jwt', { session: false }), listItemController.bulkCreate);
 router.post('/bulk-add-to-list',  passport.authenticate('jwt', { session: false }), listItemController.bulkAddToList);
 router.put('/bulk-update-delete-date',  passport.authenticate('jwt', { session: false }), listItemController.updateDeleteDate);

@@ -24,12 +24,13 @@ exports.getPublicById = async (req, res) => {
             });
         }
 
-        // Get the item and verify it's public and not deleted
+        // Get the item and verify it's public and not deleted (excluding custom items)
         const item = await models.ListItem.findOne({
             where: {
                 id: parsedItemId,
                 isPublic: true,
-                deleted: false
+                deleted: false,
+                isCustom: false // Custom items are never shown publicly
             },
             attributes: [
                 'id',

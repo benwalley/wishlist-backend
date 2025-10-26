@@ -21,6 +21,14 @@ exports.create = async (req, res, next) => {
             }
         }
 
+        // Validate that custom items are not public
+        if (req.body.isCustom === true && req.body.isPublic === true) {
+            return res.status(400).json({
+                success: false,
+                message: 'Custom items cannot be public'
+            });
+        }
+
         // Merge the authenticated user's ID with the request body
         const data = {
             ...req.body,
@@ -56,6 +64,16 @@ exports.update = async (req, res, next) => {
         const permissionResult = await PermissionService.canUserModifyItem(userId, id);
         if (!permissionResult.canAccess) {
             PermissionService.throwPermissionError(permissionResult);
+        }
+
+        const item = permissionResult.item;
+
+        // Custom items can never be public
+        if (item.isCustom && updates.isPublic === true) {
+            return res.status(400).json({
+                success: false,
+                message: 'Custom items cannot be made public'
+            });
         }
 
         const updatedItem = await ListItemService.updateItem(id, updates);
@@ -187,6 +205,15 @@ exports.bulkCreate = async (req, res, next) => {
             });
         }
 
+        // Validate that custom items are not public
+        const invalidItems = items.filter(item => item.isCustom === true && item.isPublic === true);
+        if (invalidItems.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Custom items cannot be public'
+            });
+        }
+
         // Check permissions if lists are provided
         if (listIds && listIds.length > 0) {
             const permissionResult = await PermissionService.canUserAddToLists(createdById, listIds);
@@ -269,8 +296,13 @@ exports.bulkDelete = async (req, res, next) => {
                 });
             }
 
-            // Check that user is the creator of all items
-            const unauthorizedItems = items.filter(item => item.createdById !== userId);
+            // Check that user is the creator of all items or the custom item creator
+            const unauthorizedItems = items.filter(item => {
+                const isCreator = item.createdById === userId;
+                const isCustomItemCreator = item.isCustom && item.customItemCreator === userId;
+                return !isCreator && !isCustomItemCreator;
+            });
+
             if (unauthorizedItems.length > 0) {
                 await transaction.rollback();
                 const unauthorizedIds = unauthorizedItems.map(item => item.id);
@@ -292,8 +324,11 @@ exports.bulkDelete = async (req, res, next) => {
                 {
                     where: {
                         id: { [Op.in]: validItemIds },
-                        createdById: userId,
-                        deleted: false
+                        deleted: false,
+                        [Op.or]: [
+                            { createdById: userId },
+                            { isCustom: true, customItemCreator: userId }
+                        ]
                     },
                     transaction
                 }
@@ -359,8 +394,13 @@ exports.updateDeleteDate = async (req, res, next) => {
             });
         }
 
-        // Check that user is the creator of all items
-        const unauthorizedItems = items.filter(item => item.createdById !== userId);
+        // Check that user is the creator of all items or the custom item creator
+        const unauthorizedItems = items.filter(item => {
+            const isCreator = item.createdById === userId;
+            const isCustomItemCreator = item.isCustom && item.customItemCreator === userId;
+            return !isCreator && !isCustomItemCreator;
+        });
+
         if (unauthorizedItems.length > 0) {
             const unauthorizedIds = unauthorizedItems.map(item => item.id);
             return res.status(403).json({
@@ -375,8 +415,11 @@ exports.updateDeleteDate = async (req, res, next) => {
             {
                 where: {
                     id: { [require('sequelize').Op.in]: itemIds },
-                    createdById: userId,
-                    deleted: false
+                    deleted: false,
+                    [require('sequelize').Op.or]: [
+                        { createdById: userId },
+                        { isCustom: true, customItemCreator: userId }
+                    ]
                 }
             }
         );
@@ -451,8 +494,13 @@ exports.updateVisibility = async (req, res, next) => {
             });
         }
 
-        // Check that user is the creator of all items
-        const unauthorizedItems = items.filter(item => item.createdById !== userId);
+        // Check that user is the creator of all items or the custom item creator
+        const unauthorizedItems = items.filter(item => {
+            const isCreator = item.createdById === userId;
+            const isCustomItemCreator = item.isCustom && item.customItemCreator === userId;
+            return !isCreator && !isCustomItemCreator;
+        });
+
         if (unauthorizedItems.length > 0) {
             const unauthorizedIds = unauthorizedItems.map(item => item.id);
             return res.status(403).json({
@@ -476,8 +524,11 @@ exports.updateVisibility = async (req, res, next) => {
             {
                 where: {
                     id: { [require('sequelize').Op.in]: itemIds },
-                    createdById: userId,
-                    deleted: false
+                    deleted: false,
+                    [require('sequelize').Op.or]: [
+                        { createdById: userId },
+                        { isCustom: true, customItemCreator: userId }
+                    ]
                 }
             }
         );
@@ -546,8 +597,13 @@ exports.updateLists = async (req, res, next) => {
             });
         }
 
-        // Check that user is the creator of all items
-        const unauthorizedItems = items.filter(item => item.createdById !== userId);
+        // Check that user is the creator of all items or the custom item creator
+        const unauthorizedItems = items.filter(item => {
+            const isCreator = item.createdById === userId;
+            const isCustomItemCreator = item.isCustom && item.customItemCreator === userId;
+            return !isCreator && !isCustomItemCreator;
+        });
+
         if (unauthorizedItems.length > 0) {
             const unauthorizedIds = unauthorizedItems.map(item => item.id);
             return res.status(403).json({
@@ -574,8 +630,11 @@ exports.updateLists = async (req, res, next) => {
             {
                 where: {
                     id: { [require('sequelize').Op.in]: itemIds },
-                    createdById: userId,
-                    deleted: false
+                    deleted: false,
+                    [require('sequelize').Op.or]: [
+                        { createdById: userId },
+                        { isCustom: true, customItemCreator: userId }
+                    ]
                 }
             }
         );
@@ -754,6 +813,131 @@ exports.bulkUpdatePublicityPriority = async (req, res, next) => {
             success: true,
             message: `Successfully updated ${result.updatedCount} items`,
             data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Create a custom item on another user's list
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.createCustomItem = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { listId, ...itemData } = req.body;
+        const listIdNumber = Number(listId);
+        // Validate that listId is provided
+        if (!listIdNumber || typeof listIdNumber !== 'number') {
+            return res.status(400).json({
+                success: false,
+                message: 'A valid list ID is required to create a custom item'
+            });
+        }
+
+        // Check if user has access to the list
+        const permissionResult = await PermissionService.canUserAccessList(userId, listId);
+        if (!permissionResult.canAccess) {
+            PermissionService.throwPermissionError(permissionResult);
+        }
+
+        const list = permissionResult.list;
+
+        // Check that user is NOT the list owner
+        if (String(list.ownerId) === String(userId)) {
+            return res.status(403).json({
+                success: false,
+                message: 'You cannot add custom items to your own list'
+            });
+        }
+
+        // Prepare item data with isCustom flag and customItemCreator
+        // createdById is the list owner, customItemCreator is the current user
+        // Custom items are never public
+        const data = {
+            ...itemData,
+            createdById: list.ownerId,
+            isCustom: true,
+            customItemCreator: userId,
+            isPublic: false, // Custom items are never public
+            lists: [listId]
+        };
+
+        // Create the custom item
+        const newItem = await ListItemService.createItem(data);
+
+        res.status(201).json({
+            success: true,
+            data: newItem
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Update a custom item
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+exports.updateCustomItem = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+        const userId = req.user.id;
+
+        // Get the item and verify it exists
+        const { ListItem } = require('../models');
+        const item = await ListItem.findByPk(id);
+
+        if (!item) {
+            return res.status(404).json({
+                success: false,
+                message: 'Item not found'
+            });
+        }
+
+        // Verify this is a custom item
+        if (!item.isCustom) {
+            return res.status(400).json({
+                success: false,
+                message: 'This endpoint is only for custom items'
+            });
+        }
+
+        // Check if user is the custom item creator
+        if (!item.customItemCreator || String(item.customItemCreator) !== String(userId)) {
+            return res.status(403).json({
+                success: false,
+                message: 'Only the custom item creator can update this item'
+            });
+        }
+
+        // Custom items can never be public
+        if (updates.isPublic === true) {
+            return res.status(400).json({
+                success: false,
+                message: 'Custom items cannot be made public'
+            });
+        }
+
+        // Prevent changing critical custom item fields
+        const sanitizedUpdates = {
+            ...updates,
+            isCustom: true, // Always keep as custom
+            customItemCreator: item.customItemCreator, // Don't allow changing creator
+            createdById: item.createdById // Don't allow changing list owner
+        };
+
+        const updatedItem = await ListItemService.updateItem(id, sanitizedUpdates);
+
+        res.status(200).json({
+            success: true,
+            data: updatedItem
         });
     } catch (error) {
         next(error);

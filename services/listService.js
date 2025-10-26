@@ -167,12 +167,18 @@ class ListService {
                 }
             }
 
+            // Filter out custom items if the viewer is the list owner
+            const isListOwner = String(list.ownerId) === String(userId);
+            const filteredListItems = isListOwner
+                ? listItems.filter(item => !item.isCustom)
+                : listItems;
+
             return {
                 success: true,
                 data: {
                     ...list.toJSON(),
-                    listItems,
-                    numberItems: listItems.length
+                    listItems: filteredListItems,
+                    numberItems: filteredListItems.length
                 }
             };
 
@@ -206,12 +212,13 @@ class ListService {
                 where: { ownerId: String(ownerId) }, // Ensure ownerId is cast to a string
             });
 
-            // Add number of non-deleted items for each list
+            // Add number of non-deleted items for each list (excluding custom items for owner)
             const listsWithCount = await Promise.all(lists.map(async (list) => {
                 const itemCount = await ListItem.count({
                     where: {
                         lists: { [Op.contains]: [list.id] },
-                        deleted: false
+                        deleted: false,
+                        isCustom: false // Exclude custom items since owner is viewing
                     }
                 });
 
@@ -335,11 +342,12 @@ class ListService {
                 where: { ownerId: String(userId) },
             });
 
-            // Add number of non-deleted items for each list
+            // Add number of non-deleted items for each list (excluding custom items for owner)
             const listsWithCount = await Promise.all(lists.map(async (list) => {
                 const itemCount = await ListItem.count({
                     where: {
-                        deleted: false
+                        deleted: false,
+                        isCustom: false // Exclude custom items since owner is viewing
                     },
                     include: [{
                         model: List,
@@ -583,24 +591,35 @@ class ListService {
             // Add number of items for each accessible list (conditional counting)
             const listsWithCount = await Promise.all(accessibleLists.map(async (list) => {
                 let itemCount;
+                const isListOwner = String(list.ownerId) === String(currentUserId);
 
                 // If user has full access to the list, count all non-deleted items
                 if (hasFullAccess(list)) {
-                    itemCount = await ListItem.count({
-                        where: {
-                            lists: { [Op.contains]: [list.id] },
-                            deleted: false
-                        }
-                    });
+                    const whereClause = {
+                        lists: { [Op.contains]: [list.id] },
+                        deleted: false
+                    };
+
+                    // Exclude custom items if current user is the list owner
+                    if (isListOwner) {
+                        whereClause.isCustom = false;
+                    }
+
+                    itemCount = await ListItem.count({ where: whereClause });
                 } else {
                     // For public lists without full access, only count public items
-                    itemCount = await ListItem.count({
-                        where: {
-                            lists: { [Op.contains]: [list.id] },
-                            deleted: false,
-                            isPublic: true
-                        }
-                    });
+                    const whereClause = {
+                        lists: { [Op.contains]: [list.id] },
+                        deleted: false,
+                        isPublic: true
+                    };
+
+                    // Exclude custom items if current user is the list owner
+                    if (isListOwner) {
+                        whereClause.isCustom = false;
+                    }
+
+                    itemCount = await ListItem.count({ where: whereClause });
                 }
 
                 return {
@@ -745,7 +764,11 @@ class ListService {
             // Check if user has access to the list (for matchListVisibility logic)
             const listAccess = await PermissionService.canUserAccessList(userId, listId);
             const hasListAccess = listAccess.canAccess;
+            const list = listAccess.list;
             console.log({hasListAccess});
+
+            // Check if user is the list owner
+            const isListOwner = list && String(list.ownerId) === String(userId);
 
             // Get all items in the list that are not deleted
             const itemsInList = await ListItem.findAll({
@@ -760,6 +783,11 @@ class ListService {
             // Filter items that user can view
             let viewableCount = 0;
             for (const item of itemsInList) {
+                // Skip custom items if user is the list owner
+                if (isListOwner && item.isCustom) {
+                    continue;
+                }
+
                 // Use existing permission logic to check if user can view the item
                 if (await PermissionService.canUserViewItem(item, userId, hasListAccess)) {
                     viewableCount++;
