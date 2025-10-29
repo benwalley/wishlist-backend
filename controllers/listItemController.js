@@ -167,7 +167,7 @@ exports.getById = async (req, res, next) => {
         if (item.lists && Array.isArray(item.lists) && item.lists.length > 0) {
             for (const listId of item.lists) {
                 const accessCheck = await PermissionService.canUserAccessList(userId, listId);
-                if(accessCheck.hasExplicitAccess) {
+                if(accessCheck.explicitlyInvited) {
                     hasExplicitListAccess = true;
                 }
                 if (accessCheck.canAccess) {
