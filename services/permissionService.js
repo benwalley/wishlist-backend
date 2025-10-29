@@ -241,6 +241,7 @@ class PermissionService {
      * @param {Object} item - The list item to check
      * @param {number|string} userId - The ID of the user
      * @param {boolean} hasListAccess - Whether the user has access to the list this item belongs to
+     * @param explicitlyAllowedToViewList
      * @returns {Promise<boolean>} - True if the user can view the item, false otherwise
      */
     static async canUserViewItem(item, userId, hasListAccess, explicitlyAllowedToViewList = undefined) {

@@ -569,59 +569,10 @@ class ListService {
                 return false;
             });
 
-            // Helper function to check if user has full access to a list (not just public view)
-            const hasFullAccess = (list) => {
-                // Current user is the owner
-                if (String(list.ownerId) === String(currentUserId)) {
-                    return true;
-                }
-
-                // List is shared directly with current user
-                if (list.visibleToUsers && list.visibleToUsers.includes(String(currentUserId))) {
-                    return true;
-                }
-
-                // List is shared with a group the current user belongs to
-                if (list.visibleToGroups && list.visibleToGroups.some(groupId => userGroupIds.includes(groupId))) {
-                    return true;
-                }
-
-                return false;
-            };
-
             // Add number of items for each accessible list (conditional counting)
             const listsWithCount = await Promise.all(accessibleLists.map(async (list) => {
-                let itemCount;
-                const isListOwner = String(list.ownerId) === String(currentUserId);
-
-                // If user has full access to the list, count all non-deleted items
-                if (hasFullAccess(list)) {
-                    const whereClause = {
-                        lists: { [Op.contains]: [list.id] },
-                        deleted: false
-                    };
-
-                    // Exclude custom items if current user is the list owner
-                    if (isListOwner) {
-                        whereClause.isCustom = false;
-                    }
-
-                    itemCount = await ListItem.count({ where: whereClause });
-                } else {
-                    // For public lists without full access, only count public items
-                    const whereClause = {
-                        lists: { [Op.contains]: [list.id] },
-                        deleted: false,
-                        isPublic: true
-                    };
-
-                    // Exclude custom items if current user is the list owner
-                    if (isListOwner) {
-                        whereClause.isCustom = false;
-                    }
-
-                    itemCount = await ListItem.count({ where: whereClause });
-                }
+                // Use the proper viewable items count that respects all visibility rules
+                const itemCount = await this.getViewableItemsCountForList(currentUserId, list.id);
 
                 return {
                     ...list.toJSON(),
@@ -765,6 +716,7 @@ class ListService {
             // Check if user has access to the list (for matchListVisibility logic)
             const listAccess = await PermissionService.canUserAccessList(userId, listId);
             const hasListAccess = listAccess.canAccess;
+            const hasExplicitAccess = listAccess.explicitlyInvited;
             const list = listAccess.list;
             console.log({hasListAccess});
 
@@ -790,7 +742,7 @@ class ListService {
                 }
 
                 // Use existing permission logic to check if user can view the item
-                if (await PermissionService.canUserViewItem(item, userId, hasListAccess)) {
+                if (await PermissionService.canUserViewItem(item, userId, hasListAccess, hasExplicitAccess)) {
                     viewableCount++;
                 }
             }

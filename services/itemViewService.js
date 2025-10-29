@@ -233,6 +233,7 @@ class ItemViewService {
             // Check if user has access to the list (for matchListVisibility logic)
             const listAccess = await PermissionService.canUserAccessList(userId, listId);
             const hasListAccess = listAccess.canAccess;
+            const hasExplicitAccess = listAccess.explicitlyInvited;
             const list = listAccess.list;
 
             // Check if user is the list owner
@@ -270,7 +271,7 @@ class ItemViewService {
                 }
 
                 // Use existing permission logic to check if user can view the item
-                if (await PermissionService.canUserViewItem(item, userId, hasListAccess)) {
+                if (await PermissionService.canUserViewItem(item, userId, hasListAccess, hasExplicitAccess)) {
                     unviewedCount++;
                 }
             }
