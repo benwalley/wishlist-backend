@@ -65,15 +65,26 @@ class UserService {
             });
 
             // Create a default list for the user
-            const listService = require('./listService');
-            await listService.createList({
-                ownerId: newUser.id,
-                listName: username,
-                visibleToGroups: [],
-                visibleToUsers: [],
-                public: false,
-                description: "Default wishlist",
-            });
+            try {
+                const listService = require('./listService');
+                await listService.createList({
+                    ownerId: newUser.id,
+                    listName: username,
+                    visibleToGroups: [],
+                    visibleToUsers: [],
+                    public: false,
+                    description: "Default wishlist",
+                });
+            } catch (listError) {
+                console.error('Error creating default list for new user:', {
+                    userId: newUser.id,
+                    username: username,
+                    error: listError.message,
+                    stack: listError.stack
+                });
+                // Continue even if list creation fails - user can create lists later
+                // Don't throw error to prevent user creation from failing
+            }
 
             // Generate tokens
             const tokens = await UserService.generateTokens(newUser.id, newUser.email);
@@ -286,19 +297,38 @@ class UserService {
      * @returns {Promise<Object>} - Tokens (jwtToken and refreshToken)
      */
     static async generateTokens(userId, email) {
-        const jwtToken = jwt.sign({ userId, email }, JWT_SECRET, { expiresIn: '1h' });
-        const refreshToken = jwt.sign({ userId }, REFRESH_TOKEN_SECRET, { expiresIn: '30d' });
+        if (!JWT_SECRET || !REFRESH_TOKEN_SECRET) {
+            console.error('Missing JWT secrets - JWT_SECRET or JWT_REFRESH_SECRET not set');
+            throw new ApiError('Server configuration error', {
+                status: 500,
+                errorType: 'CONFIG_ERROR',
+                publicMessage: 'Unable to generate authentication tokens. Please contact support.'
+            });
+        }
 
-        // Save refresh token
-        const refreshTokenDays = 30;
-        const refreshTokenExpiration = new Date(Date.now() + refreshTokenDays * 24 * 60 * 60 * 1000); // 30 days
-        await RefreshToken.create({
-            token: refreshToken,
-            userId,
-            expiresAt: refreshTokenExpiration,
-        });
+        try {
+            const jwtToken = jwt.sign({ userId, email }, JWT_SECRET, { expiresIn: '1h' });
+            const refreshToken = jwt.sign({ userId }, REFRESH_TOKEN_SECRET, { expiresIn: '30d' });
 
-        return { jwtToken, refreshToken };
+            // Save refresh token
+            const refreshTokenDays = 30;
+            const refreshTokenExpiration = new Date(Date.now() + refreshTokenDays * 24 * 60 * 60 * 1000); // 30 days
+            await RefreshToken.create({
+                token: refreshToken,
+                userId,
+                expiresAt: refreshTokenExpiration,
+            });
+
+            return { jwtToken, refreshToken };
+        } catch (error) {
+            console.error('Error generating tokens:', {
+                userId,
+                email,
+                error: error.message,
+                stack: error.stack
+            });
+            throw error;
+        }
     }
 
     /**

@@ -14,6 +14,14 @@ exports.createUser = async (req, res, next) => {
             user,
         });
     } catch (error) {
+        // Log full error details for debugging
+        console.error('Error creating user:', {
+            message: error.message,
+            stack: error.stack,
+            email: req.body?.email,
+            username: req.body?.username
+        });
+
         res.status(error.message === 'A user with this email already exists.' ? 409 : 400).json({
             success: false,
             error: error.message,
