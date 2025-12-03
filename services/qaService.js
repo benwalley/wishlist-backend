@@ -195,17 +195,19 @@ class QAService {
                 typeof g === 'object' ? parseInt(g.id, 10) : parseInt(g, 10)
             ).filter(id => !isNaN(id));
 
+            const conditions = [
+                // Questions where user is directly shared
+                { sharedWithUserIds: { [Op.overlap]: [userIdNum] } }
+            ];
+
+            // Questions where any of user's groups are shared
+            if (groupIds.length > 0) {
+                conditions.push({ sharedWithGroupIds: { [Op.overlap]: groupIds } });
+            }
+
             const qasWithAnswers = await Question.findAll({
                 where: {
-                    [Op.or]: [
-                        // Questions where user is directly shared
-                        Sequelize.literal(`${userIdNum} = ANY("Question"."sharedWithUserIds")`),
-
-                        // Questions where any of user's groups are shared
-                        ...(groupIds.length > 0 ? [
-                            Sequelize.literal(`"Question"."sharedWithGroupIds" && ARRAY[${groupIds.join(',')}]::integer[]`)
-                        ] : [])
-                    ]
+                    [Op.or]: conditions
                 },
                 include: [{
                     model: Answer,
@@ -292,20 +294,22 @@ class QAService {
             // Convert userId to a number if it's a string
             const userIdNum = parseInt(userId, 10);
 
+            const conditions = [
+                // Questions asked by the user
+                { askedById: userIdNum },
+
+                // Questions where user is directly shared
+                { sharedWithUserIds: { [Op.overlap]: [userIdNum] } }
+            ];
+
+            // Questions where any of user's groups are shared
+            if (userGroupIds.length > 0) {
+                conditions.push({ sharedWithGroupIds: { [Op.overlap]: userGroupIds } });
+            }
+
             const qasWithAnswers = await Question.findAll({
                 where: {
-                    [Op.or]: [
-                        // Questions asked by the user
-                        { askedById: userIdNum },
-                        
-                        // Questions where user is directly shared
-                        Sequelize.literal(`${userIdNum} = ANY("Question"."sharedWithUserIds")`),
-
-                        // Questions where any of user's groups are shared
-                        ...(userGroupIds.length > 0 ? [
-                            Sequelize.literal(`"Question"."sharedWithGroupIds" && ARRAY[${userGroupIds.join(',')}]::integer[]`)
-                        ] : [])
-                    ]
+                    [Op.or]: conditions
                 },
                 include: [{
                     model: Answer,
@@ -331,20 +335,22 @@ class QAService {
             // Convert userId to a number if it's a string
             const userIdNum = parseInt(userId, 10);
 
+            const conditions = [
+                // Questions asked by the user
+                { askedById: userIdNum },
+
+                // Questions where user is directly shared
+                { sharedWithUserIds: { [Op.overlap]: [userIdNum] } }
+            ];
+
+            // Questions where any of user's groups are shared
+            if (userGroupIds.length > 0) {
+                conditions.push({ sharedWithGroupIds: { [Op.overlap]: userGroupIds } });
+            }
+
             const qasWithAnswers = await Question.findAll({
                 where: {
-                    [Op.or]: [
-                        // Questions asked by the user
-                        { askedById: userIdNum },
-                        
-                        // Questions where user is directly shared
-                        Sequelize.literal(`${userIdNum} = ANY("Question"."sharedWithUserIds")`),
-
-                        // Questions where any of user's groups are shared
-                        ...(userGroupIds.length > 0 ? [
-                            Sequelize.literal(`"Question"."sharedWithGroupIds" && ARRAY[${userGroupIds.join(',')}]::integer[]`)
-                        ] : [])
-                    ]
+                    [Op.or]: conditions
                 },
                 include: [{
                     model: Answer,
