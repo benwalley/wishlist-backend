@@ -288,7 +288,7 @@ class QAService {
     }
 
     // Get all questions accessible to a user (asked by them + shared with them + shared with their groups)
-    // This version only shows the current user's answers
+    // This version filters answers based on each question's onlyCreatorCanSeeResponses setting
     static async getAccessibleQAsByUserId(userId, userGroupIds = []) {
         try {
             // Convert userId to a number if it's a string
@@ -307,22 +307,42 @@ class QAService {
                 conditions.push({ sharedWithGroupIds: { [Op.overlap]: userGroupIds } });
             }
 
+            // Fetch all questions with ALL answers (no filtering at DB level)
             const qasWithAnswers = await Question.findAll({
                 where: {
                     [Op.or]: conditions
                 },
                 include: [{
                     model: Answer,
-                    as: 'answers',
-                    where: {
-                        answererId: userIdNum
-                    },
-                    required: false // This ensures questions without user's answers are still included
+                    as: 'answers'
+                    // No where clause - fetch all answers
                 }],
                 order: [['createdAt', 'DESC']]
             });
 
-            return qasWithAnswers;
+            // Filter answers per question based on onlyCreatorCanSeeResponses
+            const filteredQAs = qasWithAnswers.map(question => {
+                const plainQuestion = question.get({ plain: true });
+
+                // If user is the question creator, always show all answers
+                if (plainQuestion.askedById === userIdNum) {
+                    return plainQuestion;
+                }
+
+                // Filter answers based on onlyCreatorCanSeeResponses setting
+                if (plainQuestion.onlyCreatorCanSeeResponses) {
+                    // Only show the current user's answers
+                    plainQuestion.answers = plainQuestion.answers.filter(
+                        answer => answer.answererId === userIdNum
+                    );
+                } else {
+                    // Show all answers (keep as is)
+                }
+
+                return plainQuestion;
+            });
+
+            return filteredQAs;
         } catch (error) {
             console.error('Error fetching accessible QAs by user ID:', error);
             throw error;
@@ -377,6 +397,7 @@ class QAService {
             const updateData = {
                 questionText: updates.questionText,
                 isAnonymous: updates.isAnonymous !== undefined ? updates.isAnonymous : question.isAnonymous,
+                onlyCreatorCanSeeResponses: updates.onlyCreatorCanSeeResponses !== undefined ? updates.onlyCreatorCanSeeResponses : question.onlyCreatorCanSeeResponses,
                 sharedWithGroupIds: updates.shareWithGroups || updates.sharedWithGroupIds || question.sharedWithGroupIds,
                 sharedWithUserIds: updates.shareWithUsers || updates.sharedWithUserIds || question.sharedWithUserIds,
                 deleted: updates.deleted || false

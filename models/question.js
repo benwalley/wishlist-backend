@@ -52,6 +52,11 @@ module.exports = (sequelize) => {
             type: DataTypes.BOOLEAN,
             allowNull: true, // Optional
         },
+        onlyCreatorCanSeeResponses: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
     }, {
         sequelize,
         modelName: 'Question',
