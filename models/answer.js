@@ -23,7 +23,7 @@ module.exports = (sequelize) => {
             allowNull: false, // Required field
         },
         answerText: {
-            type: DataTypes.STRING,
+            type: DataTypes.TEXT,
             allowNull: false, // Required field
         },
         visibleToGroups: {
