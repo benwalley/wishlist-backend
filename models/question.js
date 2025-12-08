@@ -33,7 +33,7 @@ module.exports = (sequelize) => {
             defaultValue: 'false', // Default value
         },
         questionText: {
-            type: DataTypes.STRING,
+            type: DataTypes.TEXT,
             allowNull: false,
         },
         sharedWithGroupIds: {
