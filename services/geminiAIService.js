@@ -1,12 +1,11 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/genai');
 const { ApiError } = require('../middleware/errorHandler');
 
 class GeminiAIService {
     constructor() {
         this.apiKey = process.env.GEMINI_API_KEY;
-        this.model = process.env.GEMINI_MODEL || 'gemini-pro';
+        this.model = process.env.GEMINI_MODEL || 'gemini-flash-latest';
         this.genAI = null;
-        this.modelInstance = null;
 
         if (!this.apiKey) {
             console.warn('GEMINI_API_KEY not found in environment variables. AI service will not be available.');
@@ -17,8 +16,7 @@ class GeminiAIService {
 
     initialize() {
         try {
-            this.genAI = new GoogleGenerativeAI(this.apiKey);
-            this.modelInstance = this.genAI.getGenerativeModel({ model: this.model });
+            this.genAI = new GoogleGenAI({ apiKey: this.apiKey });
         } catch (error) {
             console.error('Error initializing Gemini AI:', error);
             throw new ApiError('Failed to initialize AI service', {
@@ -60,20 +58,19 @@ class GeminiAIService {
             const mergedOptions = { ...defaultOptions, ...options };
 
             // Generate content
-            const result = await this.modelInstance.generateContent({
+            const response = await this.genAI.models.generateContent({
+                model: this.model,
                 contents: [{
                     role: 'user',
                     parts: [{ text: query.trim() }]
                 }],
-                generationConfig: {
+                config: {
                     maxOutputTokens: mergedOptions.maxTokens,
                     temperature: mergedOptions.temperature,
                     topP: mergedOptions.topP,
                     topK: mergedOptions.topK
                 }
             });
-
-            const response = await result.response;
 
             // Debug logging for troubleshooting
             console.log('[GEMINI-AI] Response candidates:', response.candidates?.length || 0);
@@ -98,7 +95,7 @@ class GeminiAIService {
                 }
             }
 
-            const text = response.text();
+            const text = response.text;
 
             if (!text || text.trim().length === 0) {
                 // Additional debug info for empty responses
@@ -189,13 +186,13 @@ class GeminiAIService {
     }
 
     async isServiceAvailable() {
-        return !!(this.apiKey && this.genAI && this.modelInstance);
+        return !!(this.apiKey && this.genAI);
     }
 
     getServiceStatus() {
         return {
             configured: !!this.apiKey,
-            initialized: !!(this.genAI && this.modelInstance),
+            initialized: !!this.genAI,
             model: this.model
         };
     }
@@ -524,12 +521,13 @@ The user input is: ${prompt.trim()}`;
             console.log('[GEMINI-STRUCTURED] Query length:', query.length);
 
             // Generate content with structured output
-            const result = await this.modelInstance.generateContent({
+            const response = await this.genAI.models.generateContent({
+                model: this.model,
                 contents: [{
                     role: 'user',
                     parts: [{ text: query.trim() }]
                 }],
-                generationConfig: {
+                config: {
                     maxOutputTokens: mergedOptions.maxTokens,
                     temperature: mergedOptions.temperature,
                     topP: mergedOptions.topP,
@@ -538,8 +536,6 @@ The user input is: ${prompt.trim()}`;
                     responseSchema: jsonSchema
                 }
             });
-
-            const response = await result.response;
 
             // Enhanced debugging for structured output
             console.log('[GEMINI-STRUCTURED] Response candidates:', response.candidates?.length || 0);
@@ -574,7 +570,7 @@ The user input is: ${prompt.trim()}`;
                 }
             }
 
-            const text = response.text();
+            const text = response.text;
             console.log('[GEMINI-STRUCTURED] Raw response text length:', text?.length || 0);
             console.log('[GEMINI-STRUCTURED] Raw response preview:', text?.substring(0, 200) || 'No text');
 
@@ -603,7 +599,7 @@ The user input is: ${prompt.trim()}`;
 
             return {
                 data: structuredData,
-                model: 'gemini-1.5-flash',
+                model: this.model,
                 tokens_used: response.usageMetadata?.totalTokenCount || 0,
                 response_time_ms: Date.now() - startTime
             };
@@ -620,7 +616,7 @@ The user input is: ${prompt.trim()}`;
                 errorType: 'AI_SERVICE_ERROR',
                 publicMessage: 'AI service is temporarily unavailable. Please try again.',
                 metadata: {
-                    model: 'gemini-1.5-flash',
+                    model: this.model,
                     error: error.message
                 }
             });
