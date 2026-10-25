@@ -4,10 +4,13 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const routes = require('./routes');
 const { errorHandler } = require('./middleware/errorHandler');
+const { forceHttps } = require('./middleware/forceHttps');
 const config = require('./config');
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1); // Heroku router sits in front of the app
+app.use(forceHttps);
 app.use(cors(config.cors));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
