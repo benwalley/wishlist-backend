@@ -1,6 +1,10 @@
 const { Job } = require('../models');
 const { ApiError } = require('../middleware/errorHandler');
 const onDemandJobService = require('../services/onDemandJobService');
+const itemFetchService = require('../services/itemFetchService');
+
+// Item fetch jobs time out after 70s, so anything in progress longer than this was interrupted
+const STALE_JOB_MS = 2 * 60 * 1000;
 
 /**
  * Start an async item fetch job
@@ -13,21 +17,18 @@ async function startItemFetch(req, res, next) {
         const { url } = req.body;
         const userId = req.user.id;
 
-        if (!url) {
+        let cleanUrl;
+        try {
+            cleanUrl = itemFetchService.normalizeUrl(url);
+        } catch (error) {
             return res.status(400).json({
                 success: false,
-                message: 'URL is required'
+                message: error.publicMessage || 'Please provide a valid URL'
             });
         }
 
-        if (typeof url !== 'string' || url.trim().length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide a valid URL'
-            });
-        }
-
-        const cleanUrl = url.trim();
+        // Jobs that haven't been touched in a while were interrupted (e.g. server restart)
+        await onDemandJobService.failStaleJobs({ userId, url: cleanUrl }, STALE_JOB_MS);
 
         // Check for existing pending/processing jobs for this URL and user
         const existingJob = await Job.findOne({
@@ -47,11 +48,31 @@ async function startItemFetch(req, res, next) {
             });
         }
 
-        // Create new job
+        // Fast path: cache or plain HTTP fetch + structured data. Most stores finish here,
+        // so the client gets the result immediately without creating a job or polling.
+        const fast = await itemFetchService.fetchFast(cleanUrl);
+        if (fast.complete) {
+            const data = await itemFetchService.attachImage(fast.data, userId);
+            console.log(`User ${userId} fetched item data inline for URL: ${cleanUrl}`);
+            return res.status(200).json({
+                success: true,
+                message: 'Item data extracted successfully',
+                status: 'completed',
+                data
+            });
+        }
+
+        // Slow path: browser + AI fallback in a background job
         const job = await Job.create({
             userId: userId,
             url: cleanUrl,
-            status: 'pending'
+            status: 'pending',
+            metadata: {
+                jobType: 'item_fetch',
+                skipFastPath: true,
+                resolvedUrl: fast.url,
+                partial: fast.data
+            }
         });
 
         console.log(`User ${userId} started item fetch job ${job.id} for URL: ${cleanUrl}`);
@@ -82,6 +103,8 @@ async function getJobStatus(req, res, next) {
     try {
         const { jobId } = req.params;
         const userId = req.user.id;
+
+        await onDemandJobService.failStaleJobs({ id: jobId, userId: userId }, STALE_JOB_MS);
 
         const job = await Job.findOne({
             where: {

@@ -1,4 +1,5 @@
 const { ApiError } = require('../middleware/errorHandler');
+const productExtractionService = require('./productExtractionService');
 const csv = require('csv-parser');
 const { Readable } = require('stream');
 
@@ -172,14 +173,9 @@ class CsvImportService {
      */
     cleanPrice(priceText) {
         if (!priceText || typeof priceText !== 'string') return null;
-        
-        // Remove currency symbols and extract numeric value
-        const priceMatch = priceText.replace(/[^0-9.,]/g, '').match(/[\d,]+\.?\d*/);
-        if (priceMatch) {
-            return priceMatch[0].replace(/,/g, '');
-        }
-        
-        return null;
+
+        // Handles "$1,299.99", "1.299,99 €", "19,99" etc.
+        return productExtractionService.normalizePrice(priceText);
     }
 
     /**

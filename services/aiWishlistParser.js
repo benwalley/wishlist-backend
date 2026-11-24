@@ -1,375 +1,276 @@
+const cheerio = require('cheerio');
 const geminiAIService = require('./geminiAIService');
-const { ApiError } = require('../middleware/errorHandler');
+const productExtractionService = require('./productExtractionService');
+const itemFetchService = require('./itemFetchService');
+
+/**
+ * Extracts a list of products from any listing/wishlist page with Gemini.
+ *
+ * Instead of raw HTML, Gemini gets a compact "page outline": one line per link, image or
+ * piece of text, in reading order, with `---` between list items. That's typically 5–10x
+ * smaller than the HTML. Long outlines are split into overlapping chunks that are parsed
+ * in parallel, so big lists don't hit the model's output limit.
+ */
+
+const CHUNK_CHARS = 25000;
+const CHUNK_OVERLAP_CHARS = 1500;
+const MAX_CHUNKS = 12;
+const MAX_CONCURRENT_CHUNKS = 4;
+const CHUNK_TIMEOUT_MS = 45000;
+
+const SKIP_TAGS = new Set(['script', 'style', 'noscript', 'svg', 'iframe', 'template', 'canvas', 'video', 'audio', 'nav', 'footer', 'header', 'form', 'select', 'button', 'head']);
+const ITEM_BOUNDARY_TAGS = new Set(['li', 'article', 'tr']);
+const BLOCK_TAGS = new Set(['div', 'p', 'section', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'article', 'tr', 'td', 'figure', 'figcaption', 'dl', 'dt', 'dd', 'main', 'aside']);
+
+const ITEMS_SCHEMA = {
+    type: 'object',
+    properties: {
+        items: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    name: { type: 'string', description: 'Product name' },
+                    price: { type: 'string', description: 'Price as shown, or empty string' },
+                    imageUrl: { type: 'string', description: 'IMG url copied exactly from the outline, or empty string' },
+                    linkUrl: { type: 'string', description: 'LINK url copied exactly from the outline, or empty string' }
+                },
+                required: ['name', 'price', 'imageUrl', 'linkUrl']
+            }
+        }
+    },
+    required: ['items']
+};
 
 class AIWishlistParser {
-    constructor() {
-        this.maxRetries = 3;
-        this.maxHtmlLength = 2000000; // 2MB limit - well within Gemini's token capacity
+    /**
+     * @param {string} html - Full page HTML
+     * @param {string} pageUrl - Page URL (for resolving relative links)
+     * @param {Object} options - { onProgress(completedChunks, totalChunks) }
+     * @returns {Promise<Array<{name, price, imageUrl, linkUrl, linkLabel}>>}
+     */
+    async parseItems(html, pageUrl, options = {}) {
+        const outline = this.buildPageOutline(html, pageUrl);
+        const chunks = this.splitIntoChunks(outline);
+        console.log(`[AI-PARSER] Outline is ${outline.length} chars (from ${html.length} chars of HTML), ${chunks.length} chunk(s)`);
+
+        if (chunks.length === 0) return [];
+
+        let completed = 0;
+        let failed = 0;
+        const results = await this.mapWithConcurrency(chunks, MAX_CONCURRENT_CHUNKS, async (chunk, index) => {
+            try {
+                return await this.parseChunkWithRetry(chunk, pageUrl, index);
+            } catch (error) {
+                failed++;
+                console.error(`[AI-PARSER] Chunk ${index + 1}/${chunks.length} failed: ${error.message}`);
+                return [];
+            } finally {
+                completed++;
+                if (options.onProgress) await options.onProgress(completed, chunks.length);
+            }
+        });
+
+        if (failed === chunks.length) {
+            throw new Error("We couldn't read the items on that page. Please try again in a minute.");
+        }
+
+        return this.dedupe(results.flat());
     }
 
-    async parseWishlistHTML(htmlContent, options = {}) {
-        if (!htmlContent || typeof htmlContent !== 'string') {
-            throw new ApiError('Invalid HTML content', {
-                status: 400,
-                errorType: 'INVALID_HTML',
-                publicMessage: 'HTML content is required for AI parsing'
-            });
+    async parseChunkWithRetry(chunk, pageUrl, index) {
+        try {
+            return await this.parseChunk(chunk, pageUrl);
+        } catch (error) {
+            console.warn(`[AI-PARSER] Chunk ${index + 1} attempt 1 failed (${error.message}), retrying once`);
+            return await this.parseChunk(chunk, pageUrl);
         }
+    }
 
-        // Truncate HTML if it's too long to avoid token limits
-        const truncatedHTML = htmlContent.length > this.maxHtmlLength
-            ? htmlContent.substring(0, this.maxHtmlLength) + '...[truncated]'
-            : htmlContent;
+    async parseChunk(chunk, pageUrl) {
+        const prompt = `Below is a text outline of part of a wishlist or product listing page (${pageUrl}).
+Lines starting with "LINK " are link URLs, "IMG " are image URLs (followed by "| alt text"), other lines are visible text. "---" separates list entries.
 
-        const prompt = this.buildWishlistParsingPrompt(truncatedHTML, options);
-        const jsonSchema = this.buildWishlistSchema(options);
+List every product on the page: something a person could buy or wish for. Skip navigation, ads, recommendations ("you may also like"), and store promos.
+For each product give:
+- name: product name
+- price: current price as shown (with currency symbol), or "" if none
+- imageUrl: the product photo — copy an IMG url exactly, or ""
+- linkUrl: the product page — copy a LINK url exactly, or ""
+Never invent or modify URLs. If the outline starts or ends mid-product, only include it if its name is visible.
 
-        let lastError;
-        for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
-            try {
-                console.log(`[AI-PARSER] Attempt ${attempt}/${this.maxRetries} - Trying structured output...`);
+OUTLINE:
+${chunk}`;
 
-                const aiResponse = await geminiAIService.generateStructuredResponse(prompt, jsonSchema, {
-                    maxTokens: 500000,
-                    temperature: 0.1
-                });
+        const result = await itemFetchService.withTimeout(
+            geminiAIService.generateStructuredResponse(prompt, ITEMS_SCHEMA, {
+                maxTokens: 16384,
+                temperature: 0.1,
+                thinkingBudget: 0
+            }),
+            CHUNK_TIMEOUT_MS,
+            `AI parsing timed out after ${CHUNK_TIMEOUT_MS / 1000}s`
+        );
 
-                console.log(`[AI-PARSER] ✅ Structured AI response received (${aiResponse.tokens_used} tokens, ${aiResponse.response_time_ms}ms)`);
+        const items = Array.isArray(result.data?.items) ? result.data.items : [];
+        return items.map(item => this.validateItem(item, chunk)).filter(Boolean);
+    }
 
-                const validatedItems = this.validateStructuredResponse(aiResponse.data);
-                console.log(`[AI-PARSER] ✅ Successfully validated ${validatedItems.length} items from structured response`);
+    /**
+     * Clean an AI item. URLs are kept only if they appear verbatim in the chunk,
+     * so hallucinated links/images are dropped.
+     */
+    validateItem(item, chunk) {
+        const name = productExtractionService.cleanText(item?.name);
+        if (!name) return null;
 
-                return {
-                    items: validatedItems,
-                    aiMetadata: {
-                        model: aiResponse.model,
-                        tokens_used: aiResponse.tokens_used,
-                        response_time_ms: aiResponse.response_time_ms,
-                        attempt: attempt,
-                        html_length: truncatedHTML.length,
-                        structured_output: true
-                    }
-                };
-
-            } catch (error) {
-                lastError = error;
-                console.error(`[AI-PARSER] ❌ Structured output failed: ${error.message}`);
-
-                // Fallback to text-based parsing for this attempt
-                try {
-                    console.log(`[AI-PARSER] Attempting fallback to text-based parsing...`);
-
-                    const textResponse = await geminiAIService.generateResponse(prompt, {
-                        maxTokens: 500000,
-                        temperature: 0.1
-                    });
-
-                    console.log(`[AI-PARSER] ✅ Text AI response received (${textResponse.tokens_used} tokens, ${textResponse.response_time_ms}ms)`);
-
-                    const parsedData = this.parseAIResponse(textResponse.response);
-                    console.log(`[AI-PARSER] ✅ Successfully parsed ${parsedData.length} items from text response`);
-
-                    return {
-                        items: parsedData,
-                        aiMetadata: {
-                            model: textResponse.model,
-                            tokens_used: textResponse.tokens_used,
-                            response_time_ms: textResponse.response_time_ms,
-                            attempt: attempt,
-                            html_length: truncatedHTML.length,
-                            structured_output: false,
-                            fallback_reason: 'Structured output failed'
-                        }
-                    };
-
-                } catch (textError) {
-                    console.error(`[AI-PARSER] ❌ Text fallback also failed: ${textError.message}`);
-                    lastError = textError;
+        const urlInChunk = (url) => {
+            const clean = productExtractionService.cleanText(url);
+            if (!clean) return null;
+            for (const prefix of ['LINK ', 'IMG ']) {
+                let index = chunk.indexOf(prefix + clean);
+                while (index !== -1) {
+                    // Must match the whole URL, not just a prefix of a longer one
+                    const after = chunk[index + prefix.length + clean.length];
+                    if (after === undefined || after === '\n' || after === ' ') return clean;
+                    index = chunk.indexOf(prefix + clean, index + 1);
                 }
-
-                if (attempt === this.maxRetries) {
-                    break;
-                }
-
-                // Wait before retry (exponential backoff)
-                const delay = Math.pow(2, attempt - 1) * 1000;
-                console.log(`[AI-PARSER] ⏳ Waiting ${delay}ms before retry...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
             }
-        }
+            return null;
+        };
 
-        throw new ApiError('AI parsing failed after retries', {
-            status: 500,
-            errorType: 'AI_PARSING_FAILED',
-            publicMessage: 'Unable to parse wishlist content using AI. Please try again.',
-            metadata: {
-                attempts: this.maxRetries,
-                lastError: lastError?.message
-            }
+        const linkUrl = urlInChunk(item.linkUrl);
+        return {
+            name,
+            price: productExtractionService.normalizePrice(item.price),
+            imageUrl: urlInChunk(item.imageUrl),
+            linkUrl,
+            linkLabel: linkUrl ? productExtractionService.buildLinkLabel(linkUrl, null) : null
+        };
+    }
+
+    dedupe(items) {
+        const seen = new Set();
+        return items.filter(item => {
+            const key = item.linkUrl || item.name.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
         });
     }
 
-    buildWishlistParsingPrompt(htmlContent, options = {}) {
-        return `You are an expert at parsing HTML content to extract product information from any website. Analyze the provided HTML and extract ALL product items that appear to be for sale or listed.
+    // ---------- Outline ----------
 
-INSTRUCTIONS:
-1. For price: extract only the number (e.g., "29.99"), no currency symbols or text
-2. For imageUrl: use full HTTPS URLs, convert relative URLs to absolute URLs when possible  
-3. For linkUrl: use full product URLs when available, convert relative URLs to absolute when possible
-4. If a field is missing or unclear, use null
-5. Skip any items that don't appear to be actual products (like navigation, ads, etc.)
-6. Look for common product indicators: titles, prices, images, product links
-7. Products can be in various formats: grid layouts, list layouts, cards, etc.
+    /**
+     * Convert HTML into compact text lines: LINK <url>, IMG <url> | <alt>, text, and ---
+     * between list entries. Links are absolute and cleaned (tracking params removed).
+     */
+    buildPageOutline(html, pageUrl) {
+        const $ = cheerio.load(html || '');
+        const root = $('main, [role="main"]').first();
+        const start = root.length ? root : $('body');
+        const lines = [];
 
-HTML Content to analyze:
-${htmlContent}`;
-    }
-
-    buildWishlistSchema(options = {}) {
-        // Build schema for Gemini's structured output format
-        return {
-            type: "object",
-            properties: {
-                items: {
-                    type: "array",
-                    description: "Array of products extracted from the HTML",
-                    items: {
-                        type: "object",
-                        properties: {
-                            name: {
-                                type: "string",
-                                description: "Product or item name/title"
-                            },
-                            price: {
-                                type: "string",
-                                description: "Price as string (numbers only, e.g. '29.99') or empty string if not found"
-                            },
-                            imageUrl: {
-                                type: "string",
-                                description: "Full HTTPS URL to product image or empty string if not found"
-                            },
-                            linkUrl: {
-                                type: "string",
-                                description: "Full product URL or empty string if not found"
-                            }
-                        },
-                        required: ["name"]
-                    }
-                }
-            },
-            required: ["items"]
+        const push = (line) => {
+            if (line && lines[lines.length - 1] !== line) lines.push(line);
         };
-    }
 
-    validateStructuredResponse(structuredData) {
-        if (!structuredData || typeof structuredData !== 'object') {
-            throw new ApiError('Structured response is not an object', {
-                status: 500,
-                errorType: 'INVALID_STRUCTURED_RESPONSE',
-                publicMessage: 'AI service returned invalid structured data'
-            });
-        }
+        const walk = (node) => {
+            if (node.type === 'text') {
+                const text = productExtractionService.cleanText(node.data);
+                if (text) push(text.length > 200 ? `${text.substring(0, 200)}…` : text);
+                return;
+            }
+            if (node.type !== 'tag') return;
 
-        if (!Array.isArray(structuredData.items)) {
-            throw new ApiError('Structured response items is not an array', {
-                status: 500,
-                errorType: 'INVALID_STRUCTURED_RESPONSE',
-                publicMessage: 'AI service returned invalid structured data'
-            });
-        }
+            const tag = node.name;
+            if (SKIP_TAGS.has(tag)) return;
 
-        // Validate and clean each item using existing validation logic
-        const validItems = structuredData.items.map((item, index) => {
-            // Convert empty strings to null for consistency with existing logic
-            const processedItem = {
-                name: item.name || null,
-                price: (item.price && item.price.trim() !== '') ? item.price : null,
-                imageUrl: (item.imageUrl && item.imageUrl.trim() !== '') ? item.imageUrl : null,
-                linkUrl: (item.linkUrl && item.linkUrl.trim() !== '') ? item.linkUrl : null
-            };
-            return this.validateAndCleanItem(processedItem, index);
-        }).filter(item => item !== null);
+            const attribs = node.attribs || {};
+            if (attribs['aria-hidden'] === 'true' || attribs.hidden !== undefined) return;
 
-        console.log(`Structured parsing successful: validated ${validItems.length} valid items from ${structuredData.items.length} AI results`);
-
-        return validItems;
-    }
-
-    parseAIResponse(aiResponseText) {
-        if (!aiResponseText || typeof aiResponseText !== 'string') {
-            throw new ApiError('Empty AI response', {
-                status: 500,
-                errorType: 'EMPTY_AI_RESPONSE',
-                publicMessage: 'AI service returned an empty response'
-            });
-        }
-
-        try {
-            // Clean the response - remove any text before/after JSON
-            let cleanedResponse = aiResponseText.trim();
-
-            // Find JSON array boundaries
-            const arrayStart = cleanedResponse.indexOf('[');
-            const arrayEnd = cleanedResponse.lastIndexOf(']') + 1;
-
-            if (arrayStart === -1 || arrayEnd === 0) {
-                throw new Error('No JSON array found in AI response');
+            if (ITEM_BOUNDARY_TAGS.has(tag) || attribs['data-itemid'] || attribs['data-item-id'] || attribs['data-product-id']) {
+                push('---');
             }
 
-            cleanedResponse = cleanedResponse.substring(arrayStart, arrayEnd);
-
-            const parsedData = JSON.parse(cleanedResponse);
-
-            if (!Array.isArray(parsedData)) {
-                throw new Error('AI response is not an array');
+            if (tag === 'img') {
+                const src = this.imageSource(attribs, pageUrl);
+                if (src) push(`IMG ${src}${attribs.alt ? ` | ${productExtractionService.cleanText(attribs.alt) || ''}` : ''}`);
+                return;
             }
 
-            // Validate and clean each item
-            const validItems = parsedData.map((item, index) => {
-                return this.validateAndCleanItem(item, index);
-            }).filter(item => item !== null);
-
-            console.log(`AI parsing successful: extracted ${validItems.length} valid items from ${parsedData.length} AI results`);
-
-            return validItems;
-
-        } catch (error) {
-            console.error('Error parsing AI response:', error.message);
-            console.error('Raw AI response:', aiResponseText.substring(0, 500) + '...');
-
-            throw new ApiError('Invalid AI response format', {
-                status: 500,
-                errorType: 'INVALID_AI_RESPONSE',
-                publicMessage: 'AI service returned data in an unexpected format',
-                metadata: {
-                    parseError: error.message,
-                    responsePreview: aiResponseText.substring(0, 200)
-                }
-            });
-        }
-    }
-
-    validateAndCleanItem(item, index) {
-        if (!item || typeof item !== 'object') {
-            console.warn(`Item ${index} is not a valid object, skipping`);
-            return null;
-        }
-
-        // Validate required fields
-        if (!item.name || typeof item.name !== 'string' || item.name.trim().length === 0) {
-            console.warn(`Item ${index} has invalid name, skipping`);
-            return null;
-        }
-
-        // Clean and validate price
-        let price = null;
-        if (item.price !== null && item.price !== undefined) {
-            if (typeof item.price === 'string') {
-                // Extract numeric value from price string
-                const priceMatch = item.price.replace(/[^0-9.,]/g, '').match(/[\d,]+\.?\d*/);
-                price = priceMatch ? priceMatch[0].replace(/,/g, '') : null;
-            } else if (typeof item.price === 'number') {
-                price = item.price.toString();
+            if (tag === 'a' && attribs.href) {
+                const href = productExtractionService.resolveUrl(attribs.href, pageUrl);
+                if (href) push(`LINK ${itemFetchService.safeNormalize(href) || href}`);
             }
-        }
 
-        // Validate URLs
-        const imageUrl = this.validateUrl(item.imageUrl, 'image');
-        const linkUrl = this.validateUrl(item.linkUrl, 'product');
+            for (const child of node.children || []) walk(child);
 
-        return {
-            name: item.name.trim(),
-            price: price,
-            imageUrl: imageUrl,
-            linkUrl: linkUrl
+            if (BLOCK_TAGS.has(tag)) push('');
         };
+
+        start.each((_, el) => walk(el));
+
+        return lines
+            .join('\n')
+            .replace(/\n{2,}/g, '\n')
+            .trim();
     }
 
-    validateUrl(url, type) {
-        if (!url || typeof url !== 'string') {
-            return null;
+    /** Pick the real image URL, preferring lazy-load attributes over placeholder src */
+    imageSource(attribs, pageUrl) {
+        const width = parseInt(attribs.width, 10);
+        const height = parseInt(attribs.height, 10);
+        if ((width && width < 40) || (height && height < 40)) return null; // icons / tracking pixels
+
+        const srcset = attribs['data-srcset'] || attribs.srcset;
+        const fromSrcset = srcset ? srcset.split(',').map(s => s.trim().split(/\s+/)[0]).filter(Boolean).pop() : null;
+
+        const candidates = [
+            attribs['data-old-hires'], attribs['data-src'], attribs['data-lazy-src'],
+            attribs['data-original'], attribs['data-zoom-image'], attribs.src, fromSrcset
+        ];
+        for (const candidate of candidates) {
+            const resolved = productExtractionService.resolveUrl(candidate, pageUrl);
+            if (resolved && !/\.svg(\?|$)/i.test(resolved)) return resolved;
         }
-
-        try {
-            // Convert relative URLs to absolute URLs
-            if (url.startsWith('//')) {
-                url = 'https:' + url;
-            } else if (url.startsWith('/')) {
-                // For relative URLs, we can't convert without knowing the base domain
-                // Return as-is and let the client handle it
-                return url;
-            }
-
-            const urlObj = new URL(url);
-
-            // Basic URL validation
-            if (!['http:', 'https:'].includes(urlObj.protocol)) {
-                return null;
-            }
-
-            // Less strict validation for generic URLs
-            if (type === 'image') {
-                // Allow any domain for images
-                console.log(`Image URL accepted from domain: ${urlObj.hostname}`);
-            } else if (type === 'product') {
-                // Allow any domain for product URLs
-                console.log(`Product URL accepted from domain: ${urlObj.hostname}`);
-            }
-
-            return url;
-        } catch (error) {
-            console.warn(`Invalid URL: ${url}`, error.message);
-            return null;
-        }
+        return null;
     }
 
-    async parseWithFallback(htmlContent, traditionalParsingFn, options = {}) {
-        console.log(`[AI-PARSER] Starting parseWithFallback - trying AI parsing first...`);
+    /** Split on line boundaries into chunks with a little overlap, so items at the edges aren't lost */
+    splitIntoChunks(outline) {
+        if (!outline) return [];
+        const chunks = [];
+        let start = 0;
 
-        try {
-            // Try AI parsing first
-            const aiResult = await this.parseWishlistHTML(htmlContent, options);
-
-            if (aiResult.items && aiResult.items.length > 0) {
-                console.log(`[AI-PARSER] ✅ AI parsing successful - found ${aiResult.items.length} items`);
-                return {
-                    success: true,
-                    items: aiResult.items,
-                    processingMethod: 'ai_parsing',
-                    aiMetadata: aiResult.aiMetadata
-                };
-            } else {
-                console.log(`[AI-PARSER] ⚠️  AI parsing returned no items, falling back to traditional parsing`);
+        while (start < outline.length && chunks.length < MAX_CHUNKS) {
+            let end = Math.min(start + CHUNK_CHARS, outline.length);
+            if (end < outline.length) {
+                const boundary = outline.lastIndexOf('\n---', end);
+                const newline = outline.lastIndexOf('\n', end);
+                end = boundary > start + CHUNK_CHARS / 2 ? boundary : (newline > start ? newline : end);
             }
-        } catch (error) {
-            console.warn(`[AI-PARSER] ❌ AI parsing failed: ${error.message}`);
-            console.log(`[AI-PARSER] Falling back to traditional parsing...`);
+            chunks.push(outline.substring(start, end));
+            if (end >= outline.length) break;
+
+            const overlapStart = outline.lastIndexOf('\n', end - CHUNK_OVERLAP_CHARS);
+            start = overlapStart > start ? overlapStart + 1 : end;
         }
 
-        // Fallback to traditional parsing
-        try {
-            console.log(`[AI-PARSER] Starting traditional scraping fallback...`);
-            const traditionalResult = await traditionalParsingFn();
-            console.log(`[AI-PARSER] ✅ Traditional parsing completed`);
+        return chunks;
+    }
 
-            return {
-                success: true,
-                items: traditionalResult.items || [],
-                processingMethod: 'traditional_scraping',
-                fallbackReason: 'AI parsing failed or returned no items'
-            };
-        } catch (error) {
-            console.error(`[AI-PARSER] ❌ Traditional parsing also failed: ${error.message}`);
-            throw new ApiError('Both AI and traditional parsing failed', {
-                status: 500,
-                errorType: 'ALL_PARSING_FAILED',
-                publicMessage: 'Unable to parse wishlist content using any available method',
-                metadata: {
-                    aiError: 'AI parsing failed',
-                    traditionalError: error.message
-                }
-            });
-        }
+    async mapWithConcurrency(items, limit, fn) {
+        const results = new Array(items.length);
+        let next = 0;
+        const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+            while (next < items.length) {
+                const index = next++;
+                results[index] = await fn(items[index], index);
+            }
+        });
+        await Promise.all(workers);
+        return results;
     }
 }
 

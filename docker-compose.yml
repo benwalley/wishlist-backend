@@ -16,6 +16,8 @@ services:
       - DB_PORT=5432
     volumes:
       - .:/usr/src/app
+      # Keep the image's Linux node_modules instead of the host's (native modules like sharp differ per OS)
+      - /usr/src/app/node_modules
     command: ["sh", "-c", "./wait-for-it.sh db:5432 -- npm run debug-dev"]
     cap_add:
       - SYS_ADMIN

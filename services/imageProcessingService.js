@@ -16,9 +16,10 @@ class ImageProcessingService {
      * @param {string} imageUrl - URL of the image to download
      * @param {number} size - Output square size (default: 512)
      * @param {string} backgroundColor - Background color for padding (default: white)
+     * @param {Object} options - { timeout (ms), referer (page URL, helps with hotlink-protected CDNs) }
      * @returns {Promise<Buffer>} Processed image buffer
      */
-    async downloadAndSquareImage(imageUrl, size = this.defaultSize, backgroundColor = '#ffffff') {
+    async downloadAndSquareImage(imageUrl, size = this.defaultSize, backgroundColor = '#ffffff', options = {}) {
         if (!imageUrl || typeof imageUrl !== 'string') {
             throw new ApiError('Invalid image URL', {
                 status: 400,
@@ -32,12 +33,14 @@ class ImageProcessingService {
             
             // Download image with timeout
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+            const timeoutId = setTimeout(() => controller.abort(), options.timeout || this.timeout);
 
             const response = await fetch(imageUrl, {
                 signal: controller.signal,
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
+                    'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+                    ...(options.referer && { 'Referer': options.referer })
                 }
             });
 
@@ -158,12 +161,13 @@ class ImageProcessingService {
      * @param {string} recordId - ID of the associated record
      * @param {string} recordType - Type of the associated record
      * @param {number} size - Output square size
+     * @param {Object} options - Passed to downloadAndSquareImage ({ timeout, referer })
      * @returns {Promise<number>} Image ID from database
      */
-    async downloadAndSaveImage(imageUrl, recordId = null, recordType = null, size = this.defaultSize) {
+    async downloadAndSaveImage(imageUrl, recordId = null, recordType = null, size = this.defaultSize, options = {}) {
         try {
             // Download and process image
-            const processedBuffer = await this.downloadAndSquareImage(imageUrl, size);
+            const processedBuffer = await this.downloadAndSquareImage(imageUrl, size, '#ffffff', options);
             
             // Prepare metadata
             const metadata = {
@@ -205,61 +209,50 @@ class ImageProcessingService {
     }
 
     /**
-     * Process multiple images concurrently
+     * Process multiple images concurrently using a worker pool (a slow image only
+     * occupies one worker instead of holding up a whole batch).
      * @param {Array<string>} imageUrls - Array of image URLs
      * @param {string} recordType - Type of the associated record
      * @param {number} size - Output square size
      * @param {number} maxConcurrent - Maximum concurrent downloads
+     * @param {Object} options - { timeout (ms per image), recordId }
      * @returns {Promise<Array<{url: string, imageId: number|null, error: string|null}>>}
      */
-    async processBatchImages(imageUrls, recordType = null, size = this.defaultSize, maxConcurrent = 5) {
+    async processBatchImages(imageUrls, recordType = null, size = this.defaultSize, maxConcurrent = 8, options = {}) {
         if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
             return [];
         }
 
         console.log(`[IMG-PROCESS] Processing batch of ${imageUrls.length} images (max ${maxConcurrent} concurrent)`);
 
-        const results = [];
-        
-        // Process in chunks to limit concurrency
-        for (let i = 0; i < imageUrls.length; i += maxConcurrent) {
-            const chunk = imageUrls.slice(i, i + maxConcurrent);
-            
-            const chunkPromises = chunk.map(async (url) => {
-                try {
-                    if (!url || typeof url !== 'string' || url.trim().length === 0) {
-                        return {
-                            url: url,
-                            imageId: null,
-                            error: 'Invalid URL'
-                        };
-                    }
+        const results = new Array(imageUrls.length);
+        let next = 0;
 
-                    const imageId = await this.downloadAndSaveImage(url, null, recordType, size);
-                    return {
-                        url: url,
-                        imageId: imageId,
-                        error: null
-                    };
+        const worker = async () => {
+            while (next < imageUrls.length) {
+                const index = next++;
+                const url = imageUrls[index];
+                if (!url || typeof url !== 'string' || url.trim().length === 0) {
+                    results[index] = { url, imageId: null, error: 'Invalid URL' };
+                    continue;
+                }
+                try {
+                    const imageId = await this.downloadAndSaveImage(url, options.recordId || null, recordType, size, {
+                        timeout: options.timeout
+                    });
+                    results[index] = { url, imageId, error: null };
                 } catch (error) {
                     console.warn(`[IMG-PROCESS] ⚠️  Failed to process image ${url}:`, error.message);
-                    return {
-                        url: url,
-                        imageId: null,
-                        error: error.message
-                    };
+                    results[index] = { url, imageId: null, error: error.message };
                 }
-            });
+            }
+        };
 
-            const chunkResults = await Promise.all(chunkPromises);
-            results.push(...chunkResults);
-        }
+        await Promise.all(Array.from({ length: Math.min(maxConcurrent, imageUrls.length) }, worker));
 
         const successCount = results.filter(r => r.imageId !== null).length;
-        const failCount = results.filter(r => r.error !== null).length;
-        
-        console.log(`[IMG-PROCESS] ✅ Batch complete: ${successCount} successful, ${failCount} failed`);
-        
+        console.log(`[IMG-PROCESS] ✅ Batch complete: ${successCount} successful, ${results.length - successCount} failed`);
+
         return results;
     }
 }

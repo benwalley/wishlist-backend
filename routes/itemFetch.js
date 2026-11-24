@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const { fetchItemData } = require('../controllers/itemFetchController');
 const { 
     startItemFetch, 
     getJobStatus, 
@@ -10,10 +9,7 @@ const {
 } = require('../controllers/asyncItemFetchController');
 const passport = require("passport");
 
-// Existing synchronous endpoint (kept for backward compatibility)
-router.post('/fetch', passport.authenticate('jwt', { session: false }), fetchItemData);
-
-// New asynchronous endpoints
+// Starts a fetch: returns the data directly when the fast path succeeds, otherwise a jobId to poll
 router.post('/start', passport.authenticate('jwt', { session: false }), startItemFetch);
 router.get('/status/:jobId', passport.authenticate('jwt', { session: false }), getJobStatus);
 router.delete('/cancel/:jobId', passport.authenticate('jwt', { session: false }), cancelJob);

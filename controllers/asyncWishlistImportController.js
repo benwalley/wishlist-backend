@@ -1,6 +1,12 @@
 const { Job } = require('../models');
 const { ApiError } = require('../middleware/errorHandler');
 const onDemandJobService = require('../services/onDemandJobService');
+const itemFetchService = require('../services/itemFetchService');
+const imageProcessingService = require('../services/imageProcessingService');
+
+// Imports report progress at least every ~minute; silence this long means the job died
+const STALE_JOB_MS = 3 * 60 * 1000;
+const MAX_IMPORT_IMAGES = 300;
 
 /**
  * Start an async wishlist import job
@@ -13,21 +19,17 @@ async function startWishlistImport(req, res, next) {
         const { url } = req.body;
         const userId = req.user.id;
 
-        if (!url) {
+        let cleanUrl;
+        try {
+            cleanUrl = itemFetchService.normalizeUrl(url);
+        } catch (error) {
             return res.status(400).json({
                 success: false,
-                message: 'URL is required'
+                message: error.publicMessage || 'Please provide a valid URL'
             });
         }
 
-        if (typeof url !== 'string' || url.trim().length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide a valid URL'
-            });
-        }
-
-        const cleanUrl = url.trim();
+        await onDemandJobService.failStaleJobs({ userId, url: cleanUrl }, STALE_JOB_MS);
 
         // Check for existing pending/processing jobs for this URL and user
         const existingJob = await Job.findOne({
@@ -86,6 +88,8 @@ async function getJobStatus(req, res, next) {
         const { jobId } = req.params;
         const userId = req.user.id;
 
+        await onDemandJobService.failStaleJobs({ id: jobId, userId }, STALE_JOB_MS);
+
         const job = await Job.findOne({
             where: {
                 id: jobId,
@@ -104,6 +108,8 @@ async function getJobStatus(req, res, next) {
             success: true,
             jobId: job.id,
             status: job.status,
+            progress: job.progress,
+            progressMessage: job.metadata?.progressMessage || null,
             url: job.url,
             createdAt: job.createdAt,
             updatedAt: job.updatedAt
@@ -224,7 +230,43 @@ async function getUserJobs(req, res, next) {
     }
 }
 
+/**
+ * Download and store images for items the user chose to import.
+ * Body: { imageUrls: string[] } -> data: { [url]: imageId | null }
+ */
+async function processImportImages(req, res, next) {
+    try {
+        const { imageUrls } = req.body;
+        const userId = req.user.id;
+
+        if (!Array.isArray(imageUrls)) {
+            return res.status(400).json({ success: false, message: 'imageUrls must be an array' });
+        }
+
+        const urls = [...new Set(imageUrls.filter(url => typeof url === 'string' && url.trim()))]
+            .filter(url => {
+                const safe = itemFetchService.safeNormalize(url);
+                return safe && /^https?:/i.test(url);
+            })
+            .slice(0, MAX_IMPORT_IMAGES);
+
+        const results = await imageProcessingService.processBatchImages(urls, 'wishlist_item', 512, 8, {
+            timeout: 10000,
+            recordId: userId
+        });
+
+        const data = {};
+        results.forEach(result => { data[result.url] = result.imageId; });
+
+        res.status(200).json({ success: true, data });
+    } catch (error) {
+        console.error('Error processing import images:', error);
+        next(error);
+    }
+}
+
 module.exports = {
+    processImportImages,
     startWishlistImport,
     getJobStatus,
     cancelJob,

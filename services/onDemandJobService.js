@@ -1,10 +1,11 @@
-const puppeteerService = require('./puppeteerService');
-const geminiAIService = require('./geminiAIService');
-const imageProcessingService = require('./imageProcessingService');
-const urlImportService = require('./urlImportService');
-const aiWishlistParser = require('./aiWishlistParser');
 const csvImportService = require('./csvImportService');
+const itemFetchService = require('./itemFetchService');
+const wishlistImportService = require('./wishlistImportService');
 const { Job } = require('../models');
+const { Op } = require('sequelize');
+
+const ITEM_FETCH_JOB_TIMEOUT_MS = 70000;
+const WISHLIST_IMPORT_JOB_TIMEOUT_MS = 4 * 60 * 1000;
 
 class OnDemandJobService {
     /**
@@ -81,106 +82,33 @@ class OnDemandJobService {
     /**
      * Process a wishlist import job
      * @param {Object} job - Job object
-     * @returns {Promise<Object>} Wishlist import result
+     * @returns {Promise<Object>} Wishlist import result (items carry imageUrl; images are processed at import time)
      */
     async processWishlistImportJob(job) {
         console.log(`[ON_DEMAND_JOB] Job ${job.id}: Starting wishlist import...`);
 
-        // Step 1: Extract HTML content from the page
-        console.log(`[ON_DEMAND_JOB] Job ${job.id}: Extracting HTML content...`);
-        const htmlExtraction = await urlImportService.extractPageHTML(job.url);
-
-        console.log(`[ON_DEMAND_JOB] Job ${job.id}: HTML extracted successfully`);
-        console.log(`[ON_DEMAND_JOB] - Content length: ${htmlExtraction.htmlContent.length} characters`);
-
-        // Step 2: Parse wishlist content with AI
-        console.log(`[ON_DEMAND_JOB] Job ${job.id}: Processing HTML with AI parser...`);
-        const parseResult = await aiWishlistParser.parseWithFallback(
-            htmlExtraction.htmlContent,
-            async () => {
-                throw new Error('Traditional scraping not supported for generic URLs');
-            }
+        return itemFetchService.withTimeout(
+            wishlistImportService.importFromUrl(job.url, {
+                onProgress: (percent, message) => this.updateProgress(job, percent, message)
+            }),
+            WISHLIST_IMPORT_JOB_TIMEOUT_MS,
+            'Importing that list took too long. Please try again, or export the list to CSV and import that.'
         );
+    }
 
-        console.log(`[ON_DEMAND_JOB] Job ${job.id}: Parsing completed - Found ${parseResult.items?.length || 0} items`);
-
-        if (!parseResult.success || !parseResult.items || parseResult.items.length === 0) {
-            console.log(`[ON_DEMAND_JOB] Job ${job.id}: No items found on page`);
-            return {
-                totalItems: 0,
-                items: [],
-                pageTitle: htmlExtraction.pageTitle || 'No Products Found',
-                sourceUrl: htmlExtraction.sourceUrl,
-                processingMethod: parseResult.processingMethod || 'unknown'
-            };
+    /**
+     * Save progress on the job. Also acts as a heartbeat (updatedAt) for stale-job detection.
+     * Never throws — progress is best-effort.
+     */
+    async updateProgress(job, percent, message) {
+        try {
+            await job.update({
+                progress: Math.max(0, Math.min(100, Math.round(percent))),
+                metadata: { ...(job.metadata || {}), progressMessage: message }
+            });
+        } catch (error) {
+            console.warn(`[ON_DEMAND_JOB] Job ${job.id}: Failed to save progress: ${error.message}`);
         }
-
-        // Step 3: Process images
-        console.log(`[ON_DEMAND_JOB] Job ${job.id}: Processing images...`);
-        const imageUrls = parseResult.items
-            .map(item => item.imageUrl)
-            .filter(url => url && url.trim().length > 0);
-
-        let imageProcessingResults = [];
-        if (imageUrls.length > 0) {
-            try {
-                imageProcessingResults = await imageProcessingService.processBatchImages(
-                    imageUrls,
-                    'wishlist_item',
-                    512
-                );
-                const successCount = imageProcessingResults.filter(r => r.imageId !== null).length;
-                console.log(`[ON_DEMAND_JOB] Job ${job.id}: Image processing complete: ${successCount}/${imageUrls.length} successful`);
-            } catch (error) {
-                console.error(`[ON_DEMAND_JOB] Job ${job.id}: Image processing failed:`, error);
-                imageProcessingResults = imageUrls.map(url => ({
-                    url: url,
-                    imageId: null,
-                    error: 'Image processing failed'
-                }));
-            }
-        }
-
-        // Step 4: Map images to items
-        const urlToImageId = {};
-        imageProcessingResults.forEach(result => {
-            if (result.imageId !== null) {
-                urlToImageId[result.url] = result.imageId;
-            }
-        });
-
-        const processedItems = parseResult.items.map(item => {
-            const processedItem = { ...item };
-
-            if (item.imageUrl && urlToImageId[item.imageUrl]) {
-                processedItem.imageId = urlToImageId[item.imageUrl];
-                delete processedItem.imageUrl;
-            } else if (item.imageUrl) {
-                console.warn(`[ON_DEMAND_JOB] Job ${job.id}: No processed image for URL: ${item.imageUrl}`);
-            }
-
-            return processedItem;
-        });
-
-        const imageSuccessCount = imageProcessingResults.filter(r => r.imageId !== null).length;
-
-        console.log(`[ON_DEMAND_JOB] Job ${job.id}: Wishlist import completed - ${parseResult.items.length} items, ${imageSuccessCount} images processed`);
-
-        return {
-            pageTitle: htmlExtraction.pageTitle,
-            totalItems: parseResult.items.length,
-            items: processedItems,
-            sourceUrl: htmlExtraction.sourceUrl,
-            processingMethod: parseResult.processingMethod,
-            extractionMethod: htmlExtraction.extractionMethod,
-            imageProcessing: {
-                totalImages: imageUrls.length,
-                successfulImages: imageSuccessCount,
-                failedImages: imageUrls.length - imageSuccessCount
-            },
-            ...(parseResult.aiMetadata && { aiMetadata: parseResult.aiMetadata }),
-            ...(parseResult.fallbackReason && { fallbackReason: parseResult.fallbackReason })
-        };
     }
 
     /**
@@ -189,82 +117,17 @@ class OnDemandJobService {
      * @returns {Promise<Object>} Item fetch result
      */
     async processItemFetchJob(job) {
+        const metadata = job.metadata || {};
         console.log(`[ON_DEMAND_JOB] Job ${job.id}: Starting item fetch...`);
 
-        // Step 1: Scrape page content with Puppeteer
-        console.log(`[ON_DEMAND_JOB] Job ${job.id}: Starting Puppeteer scraping...`);
-        const htmlContent = await this.scrapePageContent(job.url);
-
-        // Step 2: Parse content with Gemini AI
-        console.log(`[ON_DEMAND_JOB] Job ${job.id}: Starting Gemini AI parsing...`);
-        const parsedData = await this.parseItemData(htmlContent);
-
-        // Step 3: Process image if found
-        let imageId = null;
-        if (parsedData.imageUrl) {
-            console.log(`[ON_DEMAND_JOB] Job ${job.id}: Processing image...`);
-            try {
-                imageId = await this.processImage(parsedData.imageUrl, job.userId);
-                console.log(`[ON_DEMAND_JOB] Job ${job.id}: Image processed with ID: ${imageId}`);
-            } catch (error) {
-                console.error(`[ON_DEMAND_JOB] Job ${job.id}: Image processing failed:`, error);
-                // Continue without image - don't fail the entire job
-            }
-        }
-
-        console.log(`[ON_DEMAND_JOB] Job ${job.id}: Item fetch completed`);
-
-        return {
-            name: parsedData.name || null,
-            price: parsedData.price || null,
-            imageUrl: parsedData.imageUrl || null,
-            linkLabel: parsedData.linkLabel || null,
-            imageId: imageId
-        };
-    }
-
-    /**
-     * Scrape page content using Puppeteer
-     * @param {string} url - URL to scrape
-     * @returns {Promise<string>} HTML content
-     */
-    async scrapePageContent(url) {
-        const htmlContent = await puppeteerService.withPage(async (page) => {
-            await puppeteerService.navigateToPage(page, url, {
-                waitUntil: 'domcontentloaded', // Faster than networkidle2
-                timeout: 20000 // Reasonable timeout for background job
-            });
-            return await page.evaluate(() => document.body.innerHTML);
-        }, { blockImages: true }); // Block images for faster loading
-
-        if (!htmlContent) {
-            throw new Error('Unable to extract content from the provided URL');
-        }
-
-        return htmlContent;
-    }
-
-    /**
-     * Parse item data using Gemini AI
-     * @param {string} htmlContent - HTML content to parse
-     * @returns {Promise<Object>} Parsed item data
-     */
-    async parseItemData(htmlContent) {
-        return await geminiAIService.parseItemData(htmlContent);
-    }
-
-    /**
-     * Process and save image
-     * @param {string} imageUrl - Image URL to process
-     * @param {number} userId - User ID for the image
-     * @returns {Promise<string>} Image ID
-     */
-    async processImage(imageUrl, userId) {
-        return await imageProcessingService.downloadAndSaveImage(
-            imageUrl,
-            userId,
-            'item_fetch',
-            512 // 512x512 square images
+        // Hard cap so a hung page/AI call can never leave the job "processing" forever
+        return itemFetchService.withTimeout(
+            itemFetchService.fetchItem(metadata.resolvedUrl || job.url, job.userId, {
+                skipFastPath: !!metadata.skipFastPath,
+                partial: metadata.partial || null
+            }),
+            ITEM_FETCH_JOB_TIMEOUT_MS,
+            'Fetching product details took too long. You can still fill them in manually.'
         );
     }
 
@@ -298,66 +161,35 @@ class OnDemandJobService {
             };
         }
 
-        // Step 2: Process images
-        console.log(`[ON_DEMAND_JOB] Job ${job.id}: Processing images...`);
-        const imageUrls = csvImportService.extractImageUrls(items);
-
-        let imageProcessingResults = [];
-        if (imageUrls.length > 0) {
-            try {
-                imageProcessingResults = await imageProcessingService.processBatchImages(
-                    imageUrls,
-                    'csv_import',
-                    512
-                );
-                const successCount = imageProcessingResults.filter(r => r.imageId !== null).length;
-                console.log(`[ON_DEMAND_JOB] Job ${job.id}: Image processing complete: ${successCount}/${imageUrls.length} successful`);
-            } catch (error) {
-                console.error(`[ON_DEMAND_JOB] Job ${job.id}: Image processing failed:`, error);
-                imageProcessingResults = imageUrls.map(url => ({
-                    url: url,
-                    imageId: null,
-                    error: 'Image processing failed'
-                }));
-            }
-        }
-
-        // Step 3: Map images to items
-        const urlToImageId = {};
-        imageProcessingResults.forEach(result => {
-            if (result.imageId !== null) {
-                urlToImageId[result.url] = result.imageId;
-            }
-        });
-
-        const processedItems = items.map(item => {
-            const processedItem = { ...item };
-
-            if (item.imageUrl && urlToImageId[item.imageUrl]) {
-                processedItem.imageId = urlToImageId[item.imageUrl];
-                delete processedItem.imageUrl;
-            } else if (item.imageUrl) {
-                console.warn(`[ON_DEMAND_JOB] Job ${job.id}: No processed image for URL: ${item.imageUrl}`);
-            }
-
-            return processedItem;
-        });
-
-        const imageSuccessCount = imageProcessingResults.filter(r => r.imageId !== null).length;
-
-        console.log(`[ON_DEMAND_JOB] Job ${job.id}: CSV import completed - ${items.length} items, ${imageSuccessCount} images processed`);
+        // Images are processed at import time, only for the items the user selects
+        console.log(`[ON_DEMAND_JOB] Job ${job.id}: CSV import completed - ${items.length} items`);
 
         return {
             fileName: job.metadata.fileName || 'unknown.csv',
             totalItems: items.length,
-            items: processedItems,
-            processingMethod: 'csv_parsing',
-            imageProcessing: {
-                totalImages: imageUrls.length,
-                successfulImages: imageSuccessCount,
-                failedImages: imageUrls.length - imageSuccessCount
-            }
+            items,
+            processingMethod: 'csv_parsing'
         };
+    }
+
+    /**
+     * Mark pending/processing jobs as failed if they haven't been updated recently.
+     * Running jobs have a hard timeout (and wishlist imports update progress as they go),
+     * so a job that has been silent this long was interrupted, e.g. by a server restart.
+     * @param {Object} where - Extra where conditions (e.g. userId, url, id)
+     * @param {number} staleMs - How long without an update counts as dead
+     */
+    async failStaleJobs(where, staleMs) {
+        await Job.update({
+            status: 'failed',
+            error: 'This was interrupted. Please try again.'
+        }, {
+            where: {
+                ...where,
+                status: ['pending', 'processing'],
+                updatedAt: { [Op.lt]: new Date(Date.now() - staleMs) }
+            }
+        });
     }
 
     /**
@@ -369,10 +201,9 @@ class OnDemandJobService {
             const cutoffDate = new Date();
             cutoffDate.setHours(cutoffDate.getHours() - olderThanHours);
 
-            const { Op } = require('sequelize');
+            // Includes pending/processing jobs this old — those were interrupted (e.g. by a restart)
             const deletedCount = await Job.destroy({
                 where: {
-                    status: ['completed', 'failed'],
                     updatedAt: {
                         [Op.lt]: cutoffDate
                     }

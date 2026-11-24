@@ -5,6 +5,7 @@ class PuppeteerService {
     constructor() {
         this.browser = null;
         this.isLaunching = false;
+        this.userAgent = null;
     }
 
     async getBrowser() {
@@ -90,6 +91,12 @@ class PuppeteerService {
             };
 
             this.browser = await puppeteer.launch(launchOptions);
+            this.userAgent = null;
+            // If Chrome crashes, drop the reference so the next call relaunches it
+            this.browser.on('disconnected', () => {
+                console.warn('[PUPPETEER] Browser disconnected');
+                this.browser = null;
+            });
             this.isLaunching = false;
             return this.browser;
         } catch (error) {
@@ -103,6 +110,17 @@ class PuppeteerService {
         }
     }
 
+    async getUserAgent(browser) {
+        if (!this.userAgent) {
+            try {
+                this.userAgent = (await browser.userAgent()).replace('HeadlessChrome', 'Chrome');
+            } catch (error) {
+                this.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36';
+            }
+        }
+        return this.userAgent;
+    }
+
     async createPage(options = {}) {
         try {
             const browser = await this.getBrowser();
@@ -114,17 +132,26 @@ class PuppeteerService {
                 height: options.height || 720
             });
 
-            // Set user agent to avoid detection
-            await page.setUserAgent(
-                options.userAgent || 
-                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            );
+            // Use the real Chrome version (minus "Headless") so the UA never goes stale
+            await page.setUserAgent(options.userAgent || await this.getUserAgent(browser));
+
+            // Hide the most common headless-automation signal
+            await page.evaluateOnNewDocument(() => {
+                Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            });
 
             // Set request interceptor if needed
-            if (options.blockImages) {
+            const blockedTypes = new Set(options.blockResources || []);
+            if (options.blockImages) blockedTypes.add('image');
+            const shouldBlockRequest = options.shouldBlockRequest;
+
+            if (blockedTypes.size > 0 || shouldBlockRequest) {
                 await page.setRequestInterception(true);
                 page.on('request', (req) => {
-                    if (req.resourceType() === 'image') {
+                    if (req.isInterceptResolutionHandled && req.isInterceptResolutionHandled()) return;
+                    const blocked = blockedTypes.has(req.resourceType()) ||
+                        (shouldBlockRequest && shouldBlockRequest(req.url()));
+                    if (blocked) {
                         req.abort();
                     } else {
                         req.continue();

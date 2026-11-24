@@ -197,7 +197,14 @@ class GeminiAIService {
         };
     }
 
-    async parseItemData(htmlContent) {
+    /**
+     * Extract product fields from (pre-cleaned) page HTML.
+     * Callers should shrink the HTML first (see productExtractionService.cleanHtmlForAi) —
+     * input size is the main driver of latency here.
+     * @param {string} htmlContent - Cleaned HTML
+     * @param {Object} options - { pageUrl, maxHtmlLength }
+     */
+    async parseItemData(htmlContent, options = {}) {
         if (!htmlContent || typeof htmlContent !== 'string' || htmlContent.trim().length === 0) {
             throw new ApiError('Invalid HTML content', {
                 status: 400,
@@ -206,52 +213,43 @@ class GeminiAIService {
             });
         }
 
-        // Truncate HTML content if too long (Gemini has token limits)
-        const maxHtmlLength = 1000000;
+        const maxHtmlLength = options.maxHtmlLength || 60000;
         const truncatedHtml = htmlContent.length > maxHtmlLength ?
-            htmlContent.substring(0, maxHtmlLength) + '...' :
+            htmlContent.substring(0, maxHtmlLength) :
             htmlContent;
 
-        const prompt = `
-Please analyze this HTML content and extract the following product/item information:
-- name: The product or item name/title
-- price: The price (include currency symbol if found, or null if not found)
-- imageUrl: The main product image URL (full URL, or null if not found)
-- linkLabel: A short label identifying the website/store (e.g., "Amazon", "eBay", "Walmart", "Target", etc.)
+        const prompt = `Extract the main product from this product page HTML.
+${options.pageUrl ? `Page URL: ${options.pageUrl}\n` : ''}
+Rules:
+- name: the product title as shown to shoppers (no store name suffix).
+- price: the current selling price as written on the page, including currency symbol.
+- imageUrl: the main product photo URL, copied exactly from an attribute in the HTML. Never invent a URL. Prefer og:image or the largest product photo; skip logos and icons.
+- linkLabel: short store name, e.g. "Amazon", "Etsy", "Target".
+Use an empty string for any field you cannot find on the page.
 
-Return the response as a JSON object with exactly these fields: name, price, imageUrl, linkLabel.
-If any field cannot be determined, use null for that field.
+HTML:
+${truncatedHtml}`;
 
-HTML Content:
-${truncatedHtml}
-
-Return only the JSON object, no additional text or explanation.`;
+        const schema = {
+            type: 'object',
+            properties: {
+                name: { type: 'string', description: 'Product name or empty string' },
+                price: { type: 'string', description: 'Price with currency symbol, or empty string' },
+                imageUrl: { type: 'string', description: 'Main product image URL from the HTML, or empty string' },
+                linkLabel: { type: 'string', description: 'Short store name, or empty string' }
+            },
+            required: ['name', 'price', 'imageUrl', 'linkLabel']
+        };
 
         try {
-            const result = await this.generateResponse(prompt, {
-                maxTokens: 500000,
-                temperature: 0.1 // Lower temperature for more consistent JSON output
+            const result = await this.generateStructuredResponse(prompt, schema, {
+                maxTokens: 2048,
+                temperature: 0.1,
+                thinkingBudget: 0 // Simple extraction — thinking only adds latency
             });
 
-            // Parse the JSON response
-            let parsedData;
-            try {
-                // Clean the response to extract JSON
-                const cleanResponse = result.response.trim();
-                const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
-                const jsonString = jsonMatch ? jsonMatch[0] : cleanResponse;
+            const parsedData = result.data || {};
 
-                parsedData = JSON.parse(jsonString);
-            } catch (parseError) {
-                console.error('Failed to parse JSON response:', result.response);
-                throw new ApiError('Invalid JSON response from AI service', {
-                    status: 500,
-                    errorType: 'JSON_PARSE_ERROR',
-                    publicMessage: 'Failed to parse item data from AI response'
-                });
-            }
-
-            // Validate required fields exist
             const validatedData = {
                 name: parsedData.name || null,
                 price: parsedData.price || null,
@@ -516,12 +514,10 @@ The user input is: ${prompt.trim()}`;
 
             const mergedOptions = { ...defaultOptions, ...options };
 
-            // Debug logging for schema
-            console.log('[GEMINI-STRUCTURED] Using JSON schema:', JSON.stringify(jsonSchema, null, 2));
             console.log('[GEMINI-STRUCTURED] Query length:', query.length);
 
-            // Generate content with structured output
-            const response = await this.genAI.models.generateContent({
+            const useThinkingConfig = typeof mergedOptions.thinkingBudget === 'number';
+            const buildRequest = (withThinkingConfig) => ({
                 model: this.model,
                 contents: [{
                     role: 'user',
@@ -533,9 +529,24 @@ The user input is: ${prompt.trim()}`;
                     topP: mergedOptions.topP,
                     topK: mergedOptions.topK,
                     responseMimeType: 'application/json',
-                    responseSchema: jsonSchema
+                    responseSchema: jsonSchema,
+                    ...(withThinkingConfig && { thinkingConfig: { thinkingBudget: mergedOptions.thinkingBudget } })
                 }
             });
+
+            // Generate content with structured output
+            let response;
+            try {
+                response = await this.genAI.models.generateContent(buildRequest(useThinkingConfig));
+            } catch (error) {
+                // Some models reject a thinking budget (e.g. thinking-only models) — retry without it
+                if (useThinkingConfig && /thinking|budget/i.test(error.message || '')) {
+                    console.warn('[GEMINI-STRUCTURED] Model rejected thinkingBudget, retrying without it:', error.message);
+                    response = await this.genAI.models.generateContent(buildRequest(false));
+                } else {
+                    throw error;
+                }
+            }
 
             // Enhanced debugging for structured output
             console.log('[GEMINI-STRUCTURED] Response candidates:', response.candidates?.length || 0);
